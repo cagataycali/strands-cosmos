@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strands-cosmos"
+version = "0.1.1"
+description = "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Cagatay Cali", email = "cagataycali@icloud.com"}
+]
+keywords = [
+    "strands",
+    "agents",
+    "cosmos",
+    "nvidia",
+    "vlm",
+    "video",
+    "reasoning",
+    "physical-ai",
+    "robotics",
+    "embodied",
+    "qwen3-vl",
+    "jetson",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "strands-agents",
+    "transformers>=4.57.0,<5.3.0",
+    "accelerate>=1.12.0",
+    "torch>=2.0.0",
+    "torchvision",
+    "qwen-vl-utils>=0.0.14",
+    "pillow>=10.0.0",
+    "pyyaml>=6.0",
+    "av>=16.0.0",
+]
+
+[project.optional-dependencies]
+vllm = [
+    "vllm>=0.11.0",
+    "openai",
+]
+jetson = [
+    # Jetson users: torch is pre-installed via NVIDIA JetPack / pip index
+    # This extra just documents the recommended companion packages
+    "torchcodec; python_version>='3.10'",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio",
+    "ruff",
+]
+all = [
+    "strands-agents-tools",
+    "vllm>=0.11.0",
+    "openai>=1.0.0",
+    "pytest>=7.0",
+    "ruff",
+]
+
+[project.scripts]
+strands-cosmos-fix-cublas = "strands_cosmos.fix_cublas:main"
+
+[project.urls]
+Homepage = "https://github.com/cagataycali/strands-cosmos"
+Repository = "https://github.com/cagataycali/strands-cosmos"
+Issues = "https://github.com/cagataycali/strands-cosmos/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["strands_cosmos*"]
+exclude = ["tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
