@@ -22,6 +22,8 @@ nav:
 - API Reference: api-reference.md
 theme:
   name: material
+  logo: strands-cosmos-logo.svg
+  favicon: strands-cosmos-logo.svg
   palette:
     - scheme: default
       primary: white

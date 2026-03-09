@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>🌌 Strands Cosmos</h1>
+  <img src="strands-cosmos-logo.svg" alt="Strands Cosmos" width="180">
+  <h1>Strands Cosmos</h1>
 </div>
 
 > **Give your AI agent eyes that understand physics.**

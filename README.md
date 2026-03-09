@@ -1,6 +1,11 @@
 # strands-cosmos
 
 [![PyPI version](https://badge.fury.io/py/strands-cosmos.svg)](https://pypi.org/project/strands-cosmos/)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://cagataycali.github.io/strands-cosmos/)
+
+<p align="center">
+  <img src="strands-cosmos-logo.svg" alt="Strands Cosmos" width="180">
+</p>
 
 **NVIDIA Cosmos Reason VLM provider for [Strands Agents](https://strandsagents.com) — physical AI reasoning, video understanding, and embodied intelligence.**
 
