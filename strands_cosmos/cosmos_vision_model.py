@@ -11,6 +11,14 @@ import json
 import logging
 import re
 import threading
+import warnings
+
+# Suppress noisy video decoding warnings from transformers/torchvision
+warnings.filterwarnings("ignore", message=".*torchcodec.*")
+warnings.filterwarnings("ignore", message=".*torchvision.*decoding.*deprecated.*")
+warnings.filterwarnings("ignore", message=".*video decoding.*deprecated.*")
+warnings.filterwarnings("ignore", message=".*tie_word_embeddings.*")
+warnings.filterwarnings("ignore", message=".*tied weights.*")
 from typing import (
     Any,
     AsyncGenerator,
@@ -129,12 +137,20 @@ class CosmosVisionModel(Model):
 
         logger.debug("model_id=<%s> | loading vision model", model_id)
 
+        # Suppress noisy "tied weights" message from transformers
+        import logging as _logging
+        _hf_logger = _logging.getLogger("transformers.modeling_utils")
+        _prev_level = _hf_logger.level
+        _hf_logger.setLevel(_logging.ERROR)
+
         self.model = transformers.Qwen3VLForConditionalGeneration.from_pretrained(
             model_id,
             dtype=dtype,
             device_map=self.config["device_map"],
             attn_implementation="sdpa",
         )
+
+        _hf_logger.setLevel(_prev_level)
         self.processor = transformers.Qwen3VLProcessor.from_pretrained(model_id)
 
         # Configure vision token limits

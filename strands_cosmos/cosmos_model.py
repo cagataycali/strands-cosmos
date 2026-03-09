@@ -9,6 +9,11 @@ For vision/video capabilities, use CosmosVisionModel.
 
 import json
 import logging
+import warnings
+
+# Suppress noisy warnings
+warnings.filterwarnings("ignore", message=".*tie_word_embeddings.*")
+warnings.filterwarnings("ignore", message=".*tied weights.*")
 from typing import (
     Any,
     AsyncGenerator,
@@ -107,12 +112,20 @@ class CosmosModel(Model):
 
         logger.debug("model_id=<%s> | loading", model_id)
 
+        # Suppress noisy "tied weights" message from transformers
+        import logging as _logging
+        _hf_logger = _logging.getLogger("transformers.modeling_utils")
+        _prev_level = _hf_logger.level
+        _hf_logger.setLevel(_logging.ERROR)
+
         self.model = transformers.Qwen3VLForConditionalGeneration.from_pretrained(
             model_id,
             dtype=dtype,
             device_map=self.config["device_map"],
             attn_implementation=self.config.get("attn_implementation", "sdpa"),
         )
+
+        _hf_logger.setLevel(_prev_level)
         self.processor = transformers.Qwen3VLProcessor.from_pretrained(model_id)
 
         logger.debug("cosmos model loaded")
