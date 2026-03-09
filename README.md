@@ -13,6 +13,23 @@ Enables Strands agents to use [Cosmos-Reason2](https://github.com/nvidia-cosmos/
 
 ---
 
+## Demo
+
+> **Dashcam safety analysis with Chain-of-Thought reasoning on Jetson AGX Thor**
+
+https://github.com/user-attachments/assets/strands-cosmos-demo.mp4
+
+<details>
+<summary>📺 Can't see the video? View the interactive terminal recording</summary>
+
+[![asciicast](https://asciinema.org/a/placeholder.svg)](demo/strands-cosmos-demo.cast)
+
+The `.cast` file is at [`demo/strands-cosmos-demo.cast`](demo/strands-cosmos-demo.cast) — play it with `asciinema play demo/strands-cosmos-demo.cast`
+
+</details>
+
+---
+
 ## Install
 
 **Requirements:** Python ≥3.10, NVIDIA GPU (24GB+ for 2B, 32GB+ for 8B)
