@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "strands-cosmos"
-version = "0.1.0"
+version = "0.1.1"
 description = "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,7 @@ keywords = [
     "robotics",
     "embodied",
     "qwen3-vl",
+    "jetson",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -40,7 +41,7 @@ classifiers = [
 
 dependencies = [
     "strands-agents>=1.0.0",
-    "transformers>=4.57.0",
+    "transformers>=4.57.0,<5.3.0",
     "accelerate>=1.12.0",
     "torch>=2.0.0",
     "torchvision",
@@ -55,6 +56,11 @@ vllm = [
     "vllm>=0.11.0",
     "openai>=1.0.0",
 ]
+jetson = [
+    # Jetson users: torch is pre-installed via NVIDIA JetPack / pip index
+    # This extra just documents the recommended companion packages
+    "torchcodec; python_version>='3.10'",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio",
@@ -67,6 +73,9 @@ all = [
     "pytest>=7.0",
     "ruff",
 ]
+
+[project.scripts]
+strands-cosmos-fix-cublas = "strands_cosmos.fix_cublas:main"
 
 [project.urls]
 Homepage = "https://github.com/cagataycali/strands-cosmos"

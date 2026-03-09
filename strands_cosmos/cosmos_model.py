@@ -67,6 +67,7 @@ class CosmosModel(Model):
         device_map: str
         torch_dtype: str
         reasoning: bool
+        attn_implementation: str
 
     def __init__(
         self,
@@ -87,6 +88,7 @@ class CosmosModel(Model):
             "device_map": "auto",
             "torch_dtype": "auto",
             "reasoning": False,
+            "attn_implementation": "sdpa",
             **model_config,
         }
 
@@ -109,7 +111,7 @@ class CosmosModel(Model):
             model_id,
             dtype=dtype,
             device_map=self.config["device_map"],
-            attn_implementation="sdpa",
+            attn_implementation=self.config.get("attn_implementation", "sdpa"),
         )
         self.processor = transformers.Qwen3VLProcessor.from_pretrained(model_id)
 

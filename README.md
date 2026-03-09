@@ -8,11 +8,43 @@ Enables Strands agents to use [Cosmos-Reason2](https://github.com/nvidia-cosmos/
 
 ---
 
+## Install
+
 **Requirements:** Python ≥3.10, NVIDIA GPU (24GB+ for 2B, 32GB+ for 8B)
 
 ```bash
 pip install strands-cosmos strands-agents
 ```
+
+### NVIDIA Jetson (Thor, Orin, AGX)
+
+On Jetson devices, PyTorch's pip-bundled CUBLAS may be incompatible with the GPU architecture. After installing, run the included fix:
+
+```bash
+pip install strands-cosmos strands-agents
+
+# Fix CUBLAS (auto-detects if needed, safe to run on any platform)
+strands-cosmos-fix-cublas
+
+# Or check without fixing:
+strands-cosmos-fix-cublas --check
+```
+
+<details>
+<summary><strong>What does the CUBLAS fix do?</strong></summary>
+
+PyTorch wheels ship their own `libcublas.so` which may not support Jetson GPU architectures (e.g., SM 11.0 on Thor, SM 8.7 on Orin). This causes `CUBLAS_STATUS_INVALID_VALUE` on any matrix multiplication (`torch.mm`, attention layers, linear layers, etc.).
+
+The fix:
+1. Backs up torch's bundled `libcublas.so` and `libcublasLt.so`
+2. Copies the system CUBLAS from JetPack (`/usr/local/cuda/targets/*/lib/`)
+3. Verifies the fix with a quick `torch.mm` test
+
+To revert: `strands-cosmos-fix-cublas --revert`
+
+**Affected:** Jetson AGX Thor (SM 11.0), may affect other Jetson devices with pre-release BSPs.
+**Not affected:** Desktop GPUs (A100, H100, RTX 4090, etc.), x86_64 systems.
+</details>
 
 ---
 
@@ -43,6 +75,14 @@ agent("What happens when a ball rolls off a table?")
 |-------|-----------|--------------|
 | [Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | 24GB | Qwen3-VL |
 | [Cosmos-Reason2-8B](https://huggingface.co/nvidia/Cosmos-Reason2-8B) | 32GB | Qwen3-VL |
+
+### Verified Platforms
+
+| Platform | GPU | Status |
+|----------|-----|--------|
+| Jetson AGX Thor | NVIDIA Thor 132GB | ✅ (with CUBLAS fix) |
+| Desktop | A100 / H100 / RTX 4090 | ✅ |
+| Jetson Orin | Orin 32/64GB | ✅ (may need CUBLAS fix) |
 
 ---
 
@@ -101,6 +141,7 @@ agent("Analyze this dashcam video for safety: /path/to/video.mp4")
 strands_cosmos/
 ├── cosmos_model.py          # Text-only CosmosModel (Strands Model interface)
 ├── cosmos_vision_model.py   # Vision CosmosVisionModel (video + image + text)
+├── fix_cublas.py            # Jetson CUBLAS compatibility fix
 └── tools/
     ├── cosmos_invoke.py         # Text inference tool
     └── cosmos_vision_invoke.py  # Vision inference tool
@@ -165,6 +206,39 @@ Cosmos-Reason2 excels at **physical world understanding**:
 - 🔍 **2D Grounding** — Bounding box localization in images
 - 📍 **Temporal Localization** — Event timestamps in video
 - 🧠 **Chain-of-Thought** — `<think>` reasoning before answers
+
+---
+
+## Troubleshooting
+
+### `CUBLAS_STATUS_INVALID_VALUE` on Jetson
+
+**Symptom:** Any `torch.mm()`, attention, or linear layer crashes with CUBLAS error.
+
+**Cause:** PyTorch's pip-bundled `libcublas.so` doesn't support Jetson's GPU architecture.
+
+**Fix:**
+```bash
+strands-cosmos-fix-cublas
+```
+
+This replaces torch's bundled CUBLAS with the system CUBLAS from JetPack. Safe and reversible (`--revert`).
+
+### `StopIteration` in `get_rope_index` during video inference
+
+**Symptom:** Crash in `modeling_qwen3_vl.py` when processing video with `transformers>=5.3.0`.
+
+**Cause:** Breaking change in `transformers 5.3.0` for Qwen3-VL video RoPE position handling.
+
+**Fix:** Already handled — `strands-cosmos` pins `transformers<5.3.0` in dependencies.
+
+### Video decoding warnings (torchcodec / torchvision)
+
+These are harmless warnings about deprecated video decoding. To silence them, install `torchcodec`:
+
+```bash
+pip install torchcodec
+```
 
 ---
 
