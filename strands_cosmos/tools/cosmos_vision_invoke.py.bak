@@ -80,11 +80,7 @@ def cosmos_vision_invoke(
                     if "text" in delta:
                         response_text += delta["text"]
 
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(_run())
-        finally:
-            loop.close()
+        asyncio.get_event_loop().run_until_complete(_run())
 
         return {
             "status": "success",
