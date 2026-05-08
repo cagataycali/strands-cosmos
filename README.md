@@ -9,9 +9,9 @@
   <img src="strands-cosmos-logo.svg" alt="Strands Cosmos" width="180">
 </p>
 
-**NVIDIA Cosmos Reason VLM provider for [Strands Agents](https://strandsagents.com) — physical AI reasoning, video understanding, and embodied intelligence.**
+**NVIDIA Cosmos toolkit for [Strands Agents](https://strandsagents.com) — from VLM reasoning to world-model generation, edge deployment, and evaluation.**
 
-Enables Strands agents to use [Cosmos-Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) models for video captioning, driving analysis, robot planning, temporal reasoning, and physics understanding.
+Provides Cosmos-Reason2 as a Strands model provider plus **21 tools** covering the entire NVIDIA Cosmos ecosystem: inference, video generation (Predict2.5), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation.
 
 ---
 
@@ -20,59 +20,31 @@ Enables Strands agents to use [Cosmos-Reason2](https://github.com/nvidia-cosmos/
 > **Dashcam safety analysis with Chain-of-Thought reasoning on Jetson AGX Thor**
 
 <a href="https://github.com/cagataycali/strands-cosmos/releases/download/v0.1.1/strands-cosmos-demo.mp4">
-  <img src="demo/strands-cosmos-demo.gif" alt="Strands Cosmos Demo — Dashcam safety analysis with Chain-of-Thought reasoning on Jetson AGX Thor" width="100%">
+  <img src="demo/strands-cosmos-demo.gif" alt="Strands Cosmos Demo" width="100%">
 </a>
-
-> *Click the GIF to watch the full video with audio*
-
-<details>
-<summary>📺 Can't see the video? View the interactive terminal recording</summary>
-
-[![asciicast](https://asciinema.org/a/placeholder.svg)](demo/strands-cosmos-demo.cast)
-
-The `.cast` file is at [`demo/strands-cosmos-demo.cast`](demo/strands-cosmos-demo.cast) — play it with `asciinema play demo/strands-cosmos-demo.cast`
-
-</details>
 
 ---
 
 ## Install
 
-**Requirements:** Python ≥3.10, NVIDIA GPU (24GB+ for 2B, 32GB+ for 8B)
+```bash
+pip install strands-cosmos
+```
+
+### Developer Setup
 
 ```bash
-pip install strands-cosmos strands-agents
+git clone https://github.com/cagataycali/strands-cosmos && cd strands-cosmos
+just setup-full    # Installs system deps, Python deps, clones all Cosmos repos
+just doctor        # Verify everything
 ```
 
 ### NVIDIA Jetson (Thor, Orin, AGX)
 
-On Jetson devices, PyTorch's pip-bundled CUBLAS may be incompatible with the GPU architecture. After installing, run the included fix:
-
 ```bash
-pip install strands-cosmos strands-agents
-
-# Fix CUBLAS (auto-detects if needed, safe to run on any platform)
-strands-cosmos-fix-cublas
-
-# Or check without fixing:
-strands-cosmos-fix-cublas --check
+pip install strands-cosmos
+strands-cosmos-fix-cublas   # Fix CUBLAS for Jetson GPU architecture
 ```
-
-<details>
-<summary><strong>What does the CUBLAS fix do?</strong></summary>
-
-PyTorch wheels ship their own `libcublas.so` which may not support Jetson GPU architectures (e.g., SM 11.0 on Thor, SM 8.7 on Orin). This causes `CUBLAS_STATUS_INVALID_VALUE` on any matrix multiplication (`torch.mm`, attention layers, linear layers, etc.).
-
-The fix:
-1. Backs up torch's bundled `libcublas.so` and `libcublasLt.so`
-2. Copies the system CUBLAS from JetPack (`/usr/local/cuda/targets/*/lib/`)
-3. Verifies the fix with a quick `torch.mm` test
-
-To revert: `strands-cosmos-fix-cublas --revert`
-
-**Affected:** Jetson AGX Thor (SM 11.0), may affect other Jetson devices with pre-release BSPs.
-**Not affected:** Desktop GPUs (A100, H100, RTX 4090, etc.), x86_64 systems.
-</details>
 
 ---
 
@@ -89,7 +61,7 @@ agent = Agent(model=model)
 agent("Caption in detail: <video>dashcam.mp4</video>")
 
 # Image reasoning
-agent("<image>robot_view.jpg</image> What can be the next immediate action?")
+agent("<image>robot_view.jpg</image> What should the robot do next?")
 
 # Text-only physics reasoning
 agent("What happens when a ball rolls off a table?")
@@ -97,69 +69,45 @@ agent("What happens when a ball rolls off a table?")
 
 ---
 
-## Models
+## Tools
 
-| Model | GPU Memory | Architecture |
-|-------|-----------|--------------|
-| [Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | 24GB | Qwen3-VL |
-| [Cosmos-Reason2-8B](https://huggingface.co/nvidia/Cosmos-Reason2-8B) | 32GB | Qwen3-VL |
+Use any tool inside a Strands Agent for full Cosmos pipeline automation:
 
-### Verified Platforms
-
-| Platform | GPU | Status |
-|----------|-----|--------|
-| Jetson AGX Thor | NVIDIA Thor 132GB | ✅ (with CUBLAS fix) |
-| Desktop | A100 / H100 / RTX 4090 | ✅ |
-| Jetson Orin | Orin 32/64GB | ✅ (may need CUBLAS fix) |
-
----
-
-## Features
-
-### Video Understanding
-
-```python
-from strands_cosmos import CosmosVisionModel
-
-model = CosmosVisionModel(
-    model_id="nvidia/Cosmos-Reason2-2B",
-    fps=4,                    # Video frame rate
-    reasoning=True,           # Enable chain-of-thought
-    params={"max_tokens": 4096, "temperature": 0.6},
-)
-```
-
-### Chain-of-Thought Reasoning
-
-```python
-model = CosmosVisionModel(reasoning=True)
-agent = Agent(model=model)
-
-# Generates <think>reasoning</think> then answer
-agent("<video>scene.mp4</video> Is this video physically plausible?")
-```
-
-### Built-in Task Prompts
-
-```python
-from strands_cosmos.cosmos_vision_model import TASK_PROMPTS
-
-# Available tasks:
-# caption, embodied_reasoning, driving, causal,
-# temporal_localization, 2d_grounding, robot_cot,
-# describe_anything, mvp_bench
-```
-
-### As a Tool (in any agent)
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Reason2 VLM** | `cosmos_inference`, `cosmos_reason_hf`, `cosmos_serve` | TRT server inference, HF direct inference, server lifecycle |
+| **Predict 2.5** | `cosmos_predict_generate` | World-model video generation (future frame prediction) |
+| **Transfer 2.5** | `cosmos_transfer_generate` | ControlNet video-to-video (depth/edge/sketch→video) |
+| **Model Lifecycle** | `cosmos_model_download`, `cosmos_quantize`, `cosmos_export_onnx`, `cosmos_build_engine` | Download, FP8 quantize, ONNX export, TRT engine build |
+| **Training** | `cosmos_post_train`, `cosmos_distill` | SFT/LoRA post-training, knowledge distillation |
+| **Data** | `cosmos_curate` | Xenna data curation pipeline |
+| **Evaluation** | `cosmos_evaluate` | FID/FVD/CSE/CLIP benchmark evaluation |
+| **I/O** | `rtp_capture_frame`, `nats_publish`, `video_probe`, `video_extract_frames`, `image_read` | RTP capture, NATS messaging, video/image utilities |
+| **System** | `cosmos_sysinfo` | GPU/platform diagnostics |
 
 ```python
 from strands import Agent
-from strands_cosmos import cosmos_vision_invoke
+from strands_cosmos import cosmos_reason_hf, video_probe, cosmos_sysinfo
 
-# Use Cosmos as a tool inside a Bedrock/OpenAI agent
-agent = Agent(tools=[cosmos_vision_invoke])
-agent("Analyze this dashcam video for safety: /path/to/video.mp4")
+agent = Agent(tools=[cosmos_reason_hf, video_probe, cosmos_sysinfo])
+agent("Check the system, then analyze the video at /tmp/scene.mp4")
 ```
+
+---
+
+## Models
+
+| Model | GPU Memory | Use Case |
+|-------|-----------|----------|
+| [Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | 24GB | Edge deployment (Jetson Thor/Orin) |
+| [Cosmos-Reason2-8B](https://huggingface.co/nvidia/Cosmos-Reason2-8B) | 32GB | Cloud/desktop high-accuracy |
+
+### Performance (Jetson AGX Thor, Reason2-2B)
+
+| Task | Load Time | Generation |
+|------|-----------|-----------|
+| Text inference | 7s | **1.4s** (46 tokens) |
+| Video caption | 7s | **2.2s** (short clip @ 4fps) |
 
 ---
 
@@ -167,25 +115,46 @@ agent("Analyze this dashcam video for safety: /path/to/video.mp4")
 
 ```
 strands_cosmos/
-├── cosmos_model.py          # Text-only CosmosModel (Strands Model interface)
-├── cosmos_vision_model.py   # Vision CosmosVisionModel (video + image + text)
-├── fix_cublas.py            # Jetson CUBLAS compatibility fix
-└── tools/
-    ├── cosmos_invoke.py         # Text inference tool
-    └── cosmos_vision_invoke.py  # Vision inference tool
+├── cosmos_model.py              # CosmosModel (text-only Strands Model)
+├── cosmos_vision_model.py       # CosmosVisionModel (video+image+text)
+├── fix_cublas.py                # Jetson CUBLAS compatibility fix
+├── tools/                       # 21 tools (full Cosmos pipeline)
+│   ├── inference.py             # TRT server inference
+│   ├── reason_hf.py            # HF Transformers direct inference
+│   ├── serve.py                # Server lifecycle management
+│   ├── predict_generate.py     # Predict2.5 world model
+│   ├── transfer_generate.py    # Transfer2.5 ControlNet
+│   ├── model_download.py       # HF model download
+│   ├── quantize.py             # FP8 quantization
+│   ├── export_onnx.py          # ONNX export
+│   ├── build_engine.py         # TRT engine build
+│   ├── post_train.py           # Post-training (SFT/LoRA)
+│   ├── distill.py              # Knowledge distillation
+│   ├── curate.py               # Xenna data curation
+│   ├── evaluate.py             # Benchmark evaluation
+│   ├── rtp.py                  # GStreamer RTP capture
+│   ├── nats_pub.py             # NATS publish
+│   ├── video_utils.py          # ffprobe + frame extraction
+│   ├── image_read.py           # Base64 image read
+│   └── sysinfo.py              # System diagnostics
+└── justfile                     # Developer workflow automation
 ```
 
-```mermaid
-graph LR
-    A[Strands Agent] -->|CosmosVisionModel| B[Cosmos-Reason2]
-    B -->|Video| C[Driving Analysis]
-    B -->|Image| D[Robot Planning]
-    B -->|Text| E[Physics Reasoning]
-    B -->|Reasoning| F[Chain-of-Thought]
+---
 
-    style A fill:#e1f5ff
-    style B fill:#76b900,color:#fff
-    style F fill:#fff3cd
+## Justfile (Developer Workflow)
+
+```bash
+just setup          # Clone all 6 Cosmos ecosystem repos
+just setup-full     # Full setup: system deps + Python + repos + diagnostics
+just doctor         # Check repos, tools, GPU, platform compatibility
+just install-trt-edge-llm  # Build TensorRT-Edge-LLM from source (Jetson)
+
+# Run pipelines
+just predict-generate config.json
+just transfer-generate config.json
+just evaluate metrics.json
+just serve-start
 ```
 
 ---
@@ -194,91 +163,57 @@ graph LR
 
 ```python
 model = CosmosVisionModel(
-    model_id="nvidia/Cosmos-Reason2-8B",  # or 2B
-    device_map="auto",                     # GPU placement
-    torch_dtype="auto",                    # float16/bfloat16
-    reasoning=True,                        # CoT reasoning
-    fps=4,                                 # Video FPS
-    min_vision_tokens=256,                 # Min visual tokens
-    max_vision_tokens=8192,                # Max visual tokens
-    params={
-        "max_tokens": 4096,
-        "temperature": 0.6,
-        "top_p": 0.95,
-    },
+    model_id="nvidia/Cosmos-Reason2-8B",
+    device_map="auto",
+    torch_dtype="auto",
+    reasoning=True,           # Chain-of-thought <think>...</think>
+    fps=4,                    # Video sampling rate
+    min_vision_tokens=256,
+    max_vision_tokens=8192,
+    params={"max_tokens": 4096, "temperature": 0.6},
 )
 ```
 
 ---
 
-## Examples
+## Verified Platforms
 
-| Example | Description |
-|---------|-------------|
-| [01_basic_text.py](examples/01_basic_text.py) | Text-only physics reasoning |
-| [02_video_caption.py](examples/02_video_caption.py) | Video captioning |
-| [03_driving_analysis.py](examples/03_driving_analysis.py) | Dashcam safety analysis with CoT |
-| [04_embodied_reasoning.py](examples/04_embodied_reasoning.py) | Robot next-action prediction |
-| [05_tool_usage.py](examples/05_tool_usage.py) | Cosmos as a tool in another agent |
-
----
-
-## Capabilities
-
-Cosmos-Reason2 excels at **physical world understanding**:
-
-- 🚗 **Driving Analysis** — Traffic, hazards, navigation from dashcam video
-- 🤖 **Robot Planning** — Next-action prediction, 2D trajectory planning
-- 🎬 **Video Captioning** — Detailed temporal-spatial descriptions
-- ⚛️ **Physics Reasoning** — Object permanence, causality, plausibility
-- 🔍 **2D Grounding** — Bounding box localization in images
-- 📍 **Temporal Localization** — Event timestamps in video
-- 🧠 **Chain-of-Thought** — `<think>` reasoning before answers
+| Platform | GPU | Status |
+|----------|-----|--------|
+| Jetson AGX Thor | NVIDIA Thor 132GB | ✅ (with CUBLAS fix) |
+| Jetson Orin | 32/64GB | ✅ (may need CUBLAS fix) |
+| Desktop | A100 / H100 / RTX 4090 | ✅ |
+| Cloud | Any CUDA 12+ GPU | ✅ |
 
 ---
 
 ## Troubleshooting
 
 ### `CUBLAS_STATUS_INVALID_VALUE` on Jetson
-
-**Symptom:** Any `torch.mm()`, attention, or linear layer crashes with CUBLAS error.
-
-**Cause:** PyTorch's pip-bundled `libcublas.so` doesn't support Jetson's GPU architecture.
-
-**Fix:**
 ```bash
-strands-cosmos-fix-cublas
+strands-cosmos-fix-cublas    # Replaces torch's bundled CUBLAS with JetPack system CUBLAS
 ```
 
-This replaces torch's bundled CUBLAS with the system CUBLAS from JetPack. Safe and reversible (`--revert`).
-
-### `StopIteration` in `get_rope_index` during video inference
-
-**Symptom:** Crash in `modeling_qwen3_vl.py` when processing video with `transformers>=5.3.0`.
-
-**Cause:** Breaking change in `transformers 5.3.0` for Qwen3-VL video RoPE position handling.
-
-**Fix:** Already handled — `strands-cosmos` pins `transformers<5.3.0` in dependencies.
-
-### Video decoding warnings (torchcodec / torchvision)
-
-These are harmless warnings about deprecated video decoding. To silence them, install `torchcodec`:
-
+### `StopIteration` in `get_rope_index` during video
+Already handled — `strands-cosmos` pins `transformers<5.3.0`. If you see this, run:
 ```bash
-pip install torchcodec
+pip install "transformers>=4.57.0,<5.3.0"
 ```
+
+### TRT tools return exit 127
+Expected on workstations — those tools run on Jetson or in TRT Docker. Run `just doctor` to see what works on your machine.
 
 ---
 
 ## Resources
 
-- [Cosmos-Reason2 GitHub](https://github.com/nvidia-cosmos/cosmos-reason2)
-- [HuggingFace Models](https://huggingface.co/collections/nvidia/cosmos-reason2)
-- [Strands Agents](https://strandsagents.com)
-- [strands-mlx](https://github.com/cagataycali/strands-mlx) (Apple Silicon provider)
+- [Cosmos Cookbook](https://github.com/nvidia-cosmos/cosmos-cookbook) — Official recipes
+- [Cosmos-Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) — VLM source
+- [Strands Agents](https://strandsagents.com) — Agent framework
+- [strands-mlx](https://github.com/cagataycali/strands-mlx) — Apple Silicon provider
 
 ---
 
 ## License
 
-Apache 2.0 | Built with NVIDIA Cosmos-Reason2 and Strands Agents
+Apache 2.0 | Built with NVIDIA Cosmos and Strands Agents

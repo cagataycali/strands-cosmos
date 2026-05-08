@@ -4,6 +4,9 @@ Enable `<think>` step-by-step reasoning before the final answer. Critical for co
 
 ---
 
+![Chain-of-Thought](../assets/svg/chain-of-thought.svg)
+
+
 ## See It In Action
 
 <img src="/strands-cosmos/assets/videos/03_driving_analysis.gif" alt="Chain-of-thought driving analysis on Jetson" width="100%">

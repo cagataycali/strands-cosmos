@@ -9,7 +9,7 @@
 ## Install
 
 ```bash
-pip install strands-cosmos strands-agents
+pip install strands-cosmos
 ```
 
 !!! tip "zsh users"

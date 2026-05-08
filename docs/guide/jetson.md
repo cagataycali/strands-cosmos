@@ -4,6 +4,9 @@ Run Cosmos-Reason2 on NVIDIA Jetson edge devices (AGX Thor, Orin).
 
 ---
 
+![Jetson Deployment](../assets/svg/jetson-deploy.svg)
+
+
 ## Performance on Jetson AGX Thor
 
 <div class="grid cards" markdown>
@@ -35,7 +38,7 @@ All recordings above were captured on Jetson AGX Thor with 132GB unified memory.
 
 ```bash
 # 1. Install
-pip install strands-cosmos strands-agents
+pip install strands-cosmos
 
 # 2. Fix CUBLAS (required for Jetson)
 strands-cosmos-fix-cublas

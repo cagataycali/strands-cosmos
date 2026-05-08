@@ -46,36 +46,68 @@ model = CosmosModel(model_id="nvidia/Cosmos-Reason2-2B")
 
 ## Tools
 
-### `cosmos_vision_invoke`
+All tools are `@tool`-decorated functions compatible with any Strands Agent.
 
-Strands tool for vision inference (video + image + text).
+### Reason2 VLM
 
-```python
-from strands_cosmos import cosmos_vision_invoke
-```
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `cosmos_inference` | `prompt`, `image_path?`, `video_path?`, `server_url?` | Query TRT-Edge-LLM inference server |
+| `cosmos_reason_hf` | `prompt`, `image_path?`, `video_path?`, `max_new_tokens?`, `model_id?` | Direct HF Transformers inference (no server needed) |
+| `cosmos_serve` | `action` (`start`/`stop`/`status`) | Manage TRT-Edge-LLM server lifecycle |
 
-**Tool Parameters (called by the agent):**
+### World Models
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `prompt` | `str` | ✅ | Question about the media |
-| `media_path` | `str` | ❌ | Path to video or image file |
-| `model_id` | `str` | ❌ | Override model ID |
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `cosmos_predict_generate` | `config_path` | Generate future video frames with Predict2.5 |
+| `cosmos_transfer_generate` | `config_path` | Video-to-video with Transfer2.5 (ControlNet) |
 
-### `cosmos_invoke`
+### Model Lifecycle
 
-Strands tool for text-only inference.
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `cosmos_model_download` | `name`, `local_dir?`, `kind?` | Download model from HuggingFace |
+| `cosmos_quantize` | `model_dir`, `output_dir?`, `precision?` | FP8/INT8 quantization |
+| `cosmos_export_onnx` | `model_dir`, `output_dir?` | Export to ONNX format |
+| `cosmos_build_engine` | `onnx_dir`, `output_dir?`, `component?` | Build TRT engine (LLM or visual) |
 
-```python
-from strands_cosmos import cosmos_invoke
-```
+### Training
 
-**Tool Parameters:**
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `cosmos_post_train` | `config_path`, `method?` | Post-training (SFT, LoRA, full) |
+| `cosmos_distill` | `config_path` | Knowledge distillation (8B→2B) |
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `prompt` | `str` | ✅ | Text prompt for reasoning |
-| `model_id` | `str` | ❌ | Override model ID |
+### Data & Evaluation
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `cosmos_curate` | `config_path` | Run Xenna data curation pipeline |
+| `cosmos_evaluate` | `config_path`, `metrics?` | Evaluate with FID/FVD/CSE/CLIP |
+
+### I/O & Media
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `rtp_capture_frame` | `port?`, `output_path?` | Capture single frame from RTP/GStreamer stream |
+| `nats_publish` | `subject`, `payload` | Publish JSON to NATS subject |
+| `video_probe` | `video_path` | Get video metadata (resolution, fps, duration, codec) |
+| `video_extract_frames` | `video_path`, `output_dir`, `fps?`, `max_frames?` | Extract frames as JPEGs |
+| `image_read` | `image_path` | Read image as base64 string |
+
+### System
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `cosmos_sysinfo` | — | GPU info, platform, memory, CUDA version |
+
+### Legacy (backward-compatible)
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `cosmos_invoke` | `prompt`, `model_id?` | Text-only inference tool |
+| `cosmos_vision_invoke` | `prompt`, `media_path?`, `model_id?` | Vision inference tool |
 
 ---
 
@@ -115,10 +147,36 @@ strands-cosmos-fix-cublas --revert  # Restore original
 
 ---
 
+## Justfile Recipes
+
+Run `just --list` for all available recipes. Key ones:
+
+```bash
+just setup          # Clone all Cosmos ecosystem repos
+just setup-full     # Full setup (apt + pip + repos + doctor)
+just doctor         # Diagnose platform, tools, GPU
+just install-trt-edge-llm  # Build TRT-Edge-LLM from source
+
+just serve-start    # Start TRT inference server
+just serve-stop     # Stop server
+just predict-generate config.json
+just transfer-generate config.json
+just evaluate config.json
+```
+
+---
+
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SAMPLE_VIDEO` | Default video path for examples | `sample.mp4` |
-| `SAMPLE_IMAGE` | Default image path for examples | `sample.png` |
+| `COSMOS_MODEL_ID` | Default HF model | `nvidia/Cosmos-Reason2-2B` |
+| `COSMOS_SERVER_URL` | TRT server endpoint | `http://127.0.0.1:8080` |
+| `NATS_URL` | NATS server URL | `nats://127.0.0.1:4222` |
+| `RTP_PORT` | RTP receive port | `5600` |
 | `HF_TOKEN` | HuggingFace token for gated models | — |
+| `COSMOS_PREDICT_REPO` | Path to cosmos-predict2.5 clone | `../cosmos-predict2.5` |
+| `COSMOS_TRANSFER_REPO` | Path to cosmos-transfer2.5 clone | `../cosmos-transfer2.5` |
+| `COSMOS_REASON_REPO` | Path to cosmos-reason2 clone | `../cosmos-reason2` |
+| `COSMOS_XENNA_REPO` | Path to cosmos-xenna clone | `../cosmos-xenna` |
+| `COSMOS_COOKBOOK_REPO` | Path to cosmos-cookbook clone | `../cosmos-cookbook` |

@@ -6,6 +6,8 @@
 
 NVIDIA Cosmos Reason VLM provider for [Strands Agents](https://strandsagents.com) — physical AI reasoning, video understanding, and embodied intelligence.
 
+![Pipeline Overview](assets/svg/pipeline-overview.svg)
+
 ---
 
 ## See It In Action
@@ -52,9 +54,9 @@ NVIDIA Cosmos Reason VLM provider for [Strands Agents](https://strandsagents.com
 
 ## What is Strands Cosmos?
 
-Strands Cosmos connects [Strands Agents](https://github.com/strands-agents/sdk-python) to [NVIDIA Cosmos-Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) — a family of vision-language models purpose-built for **physical world understanding**.
+Strands Cosmos is the **full-lifecycle NVIDIA Cosmos toolkit** for [Strands Agents](https://github.com/strands-agents/sdk-python). It provides Cosmos-Reason2 as a model provider plus **21 tools** covering the entire ecosystem: VLM reasoning, world-model generation (Predict2.5), video-to-video (Transfer2.5), data curation (Xenna), post-training, quantization, edge deployment, and evaluation.
 
-**2 models · Video + Image + Text · Chain-of-Thought reasoning · Tool integration · Jetson-native**
+**2 models · 21 tools · Video + Image + Text · Chain-of-Thought · Jetson-native · Full pipeline automation**
 
 ```mermaid
 graph LR
@@ -70,7 +72,7 @@ graph LR
 ## Get Started in 2 Minutes
 
 ```bash
-pip install strands-cosmos strands-agents
+pip install strands-cosmos
 ```
 
 ```python
@@ -168,11 +170,27 @@ agent("What happens when you push a ball off the edge of a table?")
 === "As a Tool (in any Agent)"
     ```python
     from strands import Agent
-    from strands_cosmos import cosmos_vision_invoke
+    from strands_cosmos import cosmos_reason_hf, video_probe, cosmos_sysinfo
 
-    # Use Cosmos as a tool inside a Bedrock/OpenAI agent
-    agent = Agent(tools=[cosmos_vision_invoke])
-    agent("Analyze this dashcam video for safety: /path/to/video.mp4")
+    # 21 tools available — use any combination
+    agent = Agent(tools=[cosmos_reason_hf, video_probe, cosmos_sysinfo])
+    agent("Check GPU status, probe the video, then describe what you see in /tmp/scene.mp4")
+    ```
+
+=== "Full Pipeline (Agent automates Cosmos)"
+    ```python
+    from strands import Agent
+    from strands_cosmos import (
+        cosmos_model_download, cosmos_quantize, cosmos_export_onnx,
+        cosmos_build_engine, cosmos_serve, cosmos_inference,
+    )
+
+    # Agent orchestrates the full edge-deployment pipeline
+    agent = Agent(tools=[
+        cosmos_model_download, cosmos_quantize, cosmos_export_onnx,
+        cosmos_build_engine, cosmos_serve, cosmos_inference,
+    ])
+    agent("Download Reason2-2B, quantize to FP8, export ONNX, build TRT engine, start server, and run a test query")
     ```
 
 ---
@@ -209,9 +227,21 @@ Benchmarks with Cosmos-Reason2-2B on 132GB unified memory:
 
 [:material-file-tree: **Architecture** →](architecture.md)
 
-[:material-code-tags: **Examples** →](examples/overview.md)
+[:material-code-tags: **API Reference (21 tools)** →](api-reference.md)
 
 </div>
+
+---
+
+## Developer Setup (Full Cosmos Ecosystem)
+
+```bash
+git clone https://github.com/cagataycali/strands-cosmos && cd strands-cosmos
+just setup-full    # Installs apt deps, Python deps, clones 6 Cosmos repos
+just doctor        # Platform diagnostics — what works on THIS machine
+```
+
+`just doctor` checks: repos, core tools, Python packages, media tools, TRT binaries, GPU/CUDA — with platform-aware guidance (workstation vs Jetson vs Docker).
 
 ---
 

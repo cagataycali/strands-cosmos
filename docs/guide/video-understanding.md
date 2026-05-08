@@ -4,6 +4,9 @@ Cosmos-Reason2 processes video at configurable frame rates, extracting temporal 
 
 ---
 
+![Video Understanding Pipeline](../assets/svg/video-flow.svg)
+
+
 ## See It In Action
 
 <img src="/strands-cosmos/assets/videos/02_video_caption.gif" alt="Video captioning on Jetson AGX Thor" width="100%">

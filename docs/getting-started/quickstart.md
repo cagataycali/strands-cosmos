@@ -21,7 +21,7 @@ graph LR
 ## Install
 
 ```bash
-pip install strands-cosmos strands-agents
+pip install strands-cosmos
 ```
 
 ## 1. Text-Only Physics Reasoning

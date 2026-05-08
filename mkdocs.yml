@@ -1,6 +1,6 @@
 site_name: Strands Cosmos
 site_url: https://cagataycali.github.io/strands-cosmos
-site_description: "NVIDIA Cosmos Reason VLM provider for Strands Agents — physical AI reasoning, video understanding, and embodied intelligence."
+site_description: "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence."
 repo_url: https://github.com/cagataycali/strands-cosmos
 repo_name: cagataycali/strands-cosmos
 extra_css:

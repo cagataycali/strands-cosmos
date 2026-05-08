@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "strands-cosmos"
-version = "0.1.2"
+version = "0.2.0"
 description = "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence"
 readme = "README.md"
 requires-python = ">=3.10"
