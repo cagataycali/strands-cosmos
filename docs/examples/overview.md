@@ -58,6 +58,32 @@ Runnable examples tested on NVIDIA Jetson AGX Thor (132GB unified memory).
 
     → [Full example + code](tool-usage.md)
 
+- **06 — Cosmos 3 Reasoner**
+
+    Omnimodal video/image understanding via local vLLM — caption, temporal, embodied, grounding.
+
+    → `examples/06_cosmos3_reason.py` · [Cosmos 3 Guide](../guide/cosmos3.md)
+
+- **07 — Cosmos 3 Generator**
+
+    Text → image / video / **video + sound** (in-process Diffusers).
+
+    → `examples/07_cosmos3_generate.py`
+
+- **08 — Cosmos 3 Action**
+
+    World-model rollouts: forward/inverse dynamics, policy (Cosmos Framework).
+
+    → `examples/08_cosmos3_action.py`
+
+- **09 — Cosmos 3 Showcase (Reason → Generate)**
+
+    <img src="/strands-cosmos/assets/cosmos3_showcase/02_text2video_sound.gif" alt="Cosmos 3 reason to generate" width="100%">
+
+    Reason about a real video, then generate similar videos (incl. audio) from the description.
+
+    → `examples/09_cosmos3_showcase.py` · [demo/cosmos3_showcase/](https://github.com/cagataycali/strands-cosmos/tree/main/demo/cosmos3_showcase)
+
 </div>
 
 ---
@@ -71,6 +97,10 @@ Runnable examples tested on NVIDIA Jetson AGX Thor (132GB unified memory).
 | 3 | [Driving Analysis](driving.md) | ~16s | [:material-play: cast](../assets/casts/03_driving_analysis.cast) |
 | 4 | [Embodied Reasoning](embodied.md) | ~43s | [:material-play: cast](../assets/casts/04_embodied_reasoning.cast) |
 | 5 | [Tool Usage](tool-usage.md) | ~9s | [:material-play: cast](../assets/casts/05_tool_usage.cast) |
+| 6 | Cosmos 3 Reasoner (vLLM) | caption ~5s | — |
+| 7 | Cosmos 3 Generator (Diffusers) | t2v ~20–55s | — |
+| 8 | Cosmos 3 Action (Framework) | rollout ~30s | — |
+| 9 | Cosmos 3 Showcase (reason→generate) | full loop | — |
 
 ---
 
@@ -90,6 +120,11 @@ python examples/02_video_caption.py
 python examples/03_driving_analysis.py
 python examples/04_embodied_reasoning.py
 python examples/05_tool_usage.py
+
+# Cosmos 3 (see the Cosmos 3 Guide for env setup: just c3-setup-reason / c3-setup-gen)
+python examples/06_cosmos3_reason.py       # needs `just c3-serve-reason` running
+python examples/07_cosmos3_generate.py     # needs `just c3-setup-gen`
+python examples/09_cosmos3_showcase.py     # reason -> generate showcase
 ```
 
 !!! note "Sample media"

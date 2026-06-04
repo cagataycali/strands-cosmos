@@ -2,6 +2,11 @@
 
 Use Cosmos tools inside **any** Strands agent — Bedrock, Anthropic, OpenAI, Ollama, or any other provider.
 
+!!! tip "Cosmos 3 tools"
+    16 `cosmos3_*` tools are available the same way — reasoning (`cosmos3_caption`,
+    `cosmos3_temporal`, ...), generation (`cosmos3_text2video`, `cosmos3_text2video_sound`),
+    and action (`cosmos3_forward_dynamics`). See the [Cosmos 3 Guide](cosmos3.md).
+
 ---
 
 ## Overview

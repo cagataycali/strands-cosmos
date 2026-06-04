@@ -2,6 +2,11 @@
 
 Cosmos-Reason2 processes video at configurable frame rates, extracting temporal and spatial information.
 
+!!! tip "Also available with Cosmos 3"
+    The latest **Cosmos 3** Reasoner does the same video understanding (caption, temporal
+    localization, embodied next-action, grounding) via `Cosmos3ReasonerModel` — and can
+    then **generate** new video/audio. See the [Cosmos 3 Guide](cosmos3.md).
+
 ---
 
 ![Video Understanding Pipeline](../assets/svg/video-flow.svg)
