@@ -5,7 +5,7 @@ omnimodal world-model family built on a unified **Mixture-of-Transformers (MoT)*
 architecture that jointly processes and generates **language, images, video,
 audio, and action sequences**. strands-cosmos provides first-class support for it
 as Strands model providers + justfile-backed tools — **running entirely on local
-compute, with no NIM required.**
+compute.**
 
 ## Two runtime surfaces
 

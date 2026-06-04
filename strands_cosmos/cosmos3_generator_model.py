@@ -33,7 +33,6 @@ from typing import (
     Any,
     AsyncGenerator,
     Dict,
-    List,
     Optional,
     cast,
 )
@@ -276,9 +275,9 @@ class Cosmos3GeneratorModel(Model):
     @staticmethod
     def _mux_audio(video_path: str, sound, out_path: str, sample_rate: int = 48000) -> bool:
         """Mux a stereo audio tensor into a video via ffmpeg. Returns True on success."""
-        import subprocess
         import shutil
-        import numpy as np
+        import subprocess
+
         import soundfile as sf
 
         if not shutil.which("ffmpeg"):

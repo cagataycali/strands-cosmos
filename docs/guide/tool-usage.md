@@ -2,11 +2,16 @@
 
 Use Cosmos tools inside **any** Strands agent — Bedrock, Anthropic, OpenAI, Ollama, or any other provider.
 
+!!! tip "Cosmos 3 tools"
+    16 `cosmos3_*` tools are available the same way — reasoning (`cosmos3_caption`,
+    `cosmos3_temporal`, ...), generation (`cosmos3_text2video`, `cosmos3_text2video_sound`),
+    and action (`cosmos3_forward_dynamics`). See the [Cosmos 3 Guide](cosmos3.md).
+
 ---
 
 ## Overview
 
-strands-cosmos provides **21 tools** that let any agent orchestrate the full NVIDIA Cosmos pipeline:
+strands-cosmos provides **37 tools** (21 Cosmos-Reason2/Predict/Transfer + 16 Cosmos 3) that let any agent orchestrate the full NVIDIA Cosmos pipeline:
 
 | Category | Tools |
 |----------|-------|

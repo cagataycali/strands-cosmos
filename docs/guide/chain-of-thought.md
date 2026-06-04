@@ -2,6 +2,10 @@
 
 Enable `<think>` step-by-step reasoning before the final answer. Critical for complex physical reasoning tasks.
 
+!!! tip "Cosmos 3 reasoning"
+    `Cosmos3ReasonerModel(reasoning=True)` enables the same explicit `<think>` format on
+    the latest omnimodal model. See the [Cosmos 3 Guide](cosmos3.md).
+
 ---
 
 ![Chain-of-Thought](../assets/svg/chain-of-thought.svg)

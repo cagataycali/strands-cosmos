@@ -8,12 +8,15 @@ How strands-cosmos is structured internally.
 
 ```
 strands_cosmos/
-├── __init__.py                  # Exports: CosmosModel, CosmosVisionModel, tools
+├── __init__.py                  # Exports: 4 model providers + 37 tools
 ├── cosmos_model.py              # Text-only model (Strands Model interface)
 ├── cosmos_vision_model.py       # Vision model (video + image + text)
+│   cosmos3_reasoner_model.py     # Cosmos 3 Reasoner (vLLM, text+vision -> text)
+│   cosmos3_generator_model.py    # Cosmos 3 Generator (Diffusers, -> image/video/sound)
 ├── fix_cublas.py                # Jetson CUBLAS compatibility fix
-├── tools/                       # 21 tools covering full Cosmos lifecycle
+├── tools/                       # 37 tools covering full Cosmos lifecycle
 │   ├── _common.py              # Shared justfile runner utility
+│   ├── cosmos3.py             # 16 Cosmos 3 tools (reason/generate/action/serve)
 │   ├── inference.py            # TRT server inference
 │   ├── reason_hf.py            # HF Transformers direct inference
 │   ├── serve.py                # TRT server lifecycle
@@ -43,17 +46,25 @@ strands_cosmos/
 
 ```mermaid
 graph TD
-    SM["strands.models.Model<br/><i>Abstract base class</i>"] --> CM["CosmosModel<br/><i>Text-only</i>"]
-    SM --> CVM["CosmosVisionModel<br/><i>Video + Image + Text</i>"]
+    SM["strands.models.Model<br/><i>Abstract base class</i>"] --> CM["CosmosModel<br/><i>Reason2 text-only</i>"]
+    SM --> CVM["CosmosVisionModel<br/><i>Reason2 video+image+text</i>"]
+    SM --> C3R["Cosmos3ReasonerModel<br/><i>omnimodal understanding</i>"]
+    SM --> C3G["Cosmos3GeneratorModel<br/><i>omnimodal generation</i>"]
 
-    CVM --> Q["Qwen3VLForConditionalGeneration<br/><i>HuggingFace Transformers</i>"]
+    CVM --> Q["Qwen3VL (Transformers)"]
     CM --> Q
+    C3R --> VLLM["vLLM server<br/><i>Cosmos3ReasonerForConditionalGeneration</i>"]
+    C3G --> DIFF["Diffusers<br/><i>Cosmos3OmniPipeline</i>"]
 
-    Q --> GPU["🖥️ NVIDIA GPU<br/>CUDA inference"]
+    Q --> GPU["🖥️ NVIDIA GPU"]
+    VLLM --> GPU
+    DIFF --> GPU
 
     style SM fill:#264653,color:#fff
     style CVM fill:#76b900,color:#fff
     style CM fill:#76b900,color:#fff
+    style C3R fill:#4a1d96,color:#fff
+    style C3G fill:#4a1d96,color:#fff
 ```
 
 ---

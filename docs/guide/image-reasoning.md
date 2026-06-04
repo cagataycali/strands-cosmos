@@ -2,6 +2,11 @@
 
 Cosmos-Reason2 processes single images for object recognition, spatial reasoning, and embodied intelligence.
 
+!!! tip "Also available with Cosmos 3"
+    **Cosmos 3** supports image reasoning (grounding, describe-anything, action CoT) via
+    `Cosmos3ReasonerModel`, plus image **generation** and image→video. See the
+    [Cosmos 3 Guide](cosmos3.md).
+
 ---
 
 ## See It In Action

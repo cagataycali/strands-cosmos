@@ -922,3 +922,15 @@ c3-action input_jsonl out="/tmp/c3_action" checkpoint="Cosmos3-Nano" seed="0" pr
       --checkpoint-path "{{checkpoint}}" \
       --seed={{seed}}
     echo "action output -> {{out}}  (per-run: <out>/<name>/vision.mp4)"
+
+# ── Release ───────────────────────────────────────────────────────────────
+# Build sdist+wheel locally. CI (.github/workflows/release.yml) publishes to
+# PyPI automatically on a pushed `v*` tag via Trusted Publishing.
+build-dist:
+    {{PYTHON}} -m pip install --upgrade build
+    {{PYTHON}} -m build
+
+# Manual PyPI upload fallback (CI is preferred). Needs ~/.pypirc or TWINE_* env.
+publish: build-dist
+    {{PYTHON}} -m pip install --upgrade twine
+    {{PYTHON}} -m twine upload dist/*
