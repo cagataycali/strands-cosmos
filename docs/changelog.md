@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-06-04
+
+### Added — native video-to-video transfer
+
+- **`cosmos3_video2video` tool** + `c3-omni-docker` / `c3-v2v` justfile recipes:
+  structure-preserving video transfer (e.g. day→night, recolor buildings,
+  restyle) by re-rendering an input video with a new prompt via the Cosmos 3
+  **vLLM-Omni** server (`/v1/videos/sync`, `input_reference`).
+- vLLM-Omni runs from the official `vllm/vllm-omni:cosmos3` Docker image (the
+  only build with all modalities incl. video2video). `c3-omni-docker` launches
+  it with `--gpus all` and the shared HF cache.
+- Validated live: input construction-site video transformed to night / recolor /
+  rain (832×480, structure preserved, ~12s/clip).
+
 ## [0.4.2] - 2026-06-04
 
 ### Fixed

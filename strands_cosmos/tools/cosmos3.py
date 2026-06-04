@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from strands import tool
 
-from ._common import err, just_run, proc_result
+from ._common import err, just_run, ok, proc_result
 
 # Long timeouts: video gen + model load can take many minutes.
 _GEN_TIMEOUT = 60 * 60        # 1h for generation
@@ -170,6 +170,90 @@ def cosmos3_text2video_sound(prompt: str, out: str = "/tmp/c3_t2v_sound.mp4",
                     str(fps), str(steps), str(guidance), res, "true", str(seed),
                     timeout_s=_GEN_TIMEOUT)
     return proc_result(proc, "cosmos3 text2video+sound -> " + out, "c3 t2v-sound failed")
+
+
+@tool
+def cosmos3_video2video(
+    video: str,
+    prompt: str,
+    out: str = "/tmp/c3_v2v.mp4",
+    port: int = 8001,
+    steps: int = 20,
+    guidance: float = 6.0,
+    size: str = "832x480",
+    frames: int = 29,
+    fps: int = 16,
+    seed: int = 0,
+    negative: str = "blurry, distorted, low quality",
+    guardrails: bool = True,
+) -> dict:
+    """Cosmos 3 video-to-video: re-render an input video with a new prompt.
+
+    Structure-preserving transfer (e.g. day->night, recolor, restyle) via the
+    vLLM-Omni server's /v1/videos/sync endpoint. Start the server first with
+    `just c3-omni-docker` (Docker image vllm/vllm-omni:cosmos3 — the only build
+    with all modalities incl. video2video).
+
+    Args:
+        video: Path to the input video (local file).
+        prompt: Target description (the transformation to apply).
+        out: Output MP4 path.
+        port: Omni server port (default 8001).
+        steps: Diffusion steps.
+        guidance: CFG scale.
+        size: Output resolution "WxH".
+        frames: Frame count.
+        fps: Frames per second.
+        seed: Reproducibility seed.
+        negative: Negative prompt.
+        guardrails: Enable Cosmos 3 safety guardrails.
+    """
+    import json as _json
+    import os as _os
+
+    try:
+        import requests
+    except ImportError as e:
+        return err("requests required for cosmos3_video2video: pip install requests")
+
+    path = _os.path.expanduser(video)
+    if not _os.path.exists(path):
+        return err("input video not found: " + path)
+
+    extra = {
+        "use_resolution_template": False,
+        "use_duration_template": False,
+        "guardrails": guardrails,
+    }
+    data = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "size": size,
+        "num_frames": str(frames),
+        "fps": str(fps),
+        "num_inference_steps": str(steps),
+        "guidance_scale": str(guidance),
+        "flow_shift": "10.0",
+        "seed": str(seed),
+        "extra_params": _json.dumps(extra),
+    }
+    try:
+        with open(path, "rb") as f:
+            resp = requests.post(
+                f"http://localhost:{port}/v1/videos/sync",
+                data=data,
+                files={"input_reference": (_os.path.basename(path), f, "video/mp4")},
+                timeout=60 * 30,
+            )
+        if resp.status_code != 200:
+            return err(f"omni server returned {resp.status_code}: {resp.text[:200]}")
+        _os.makedirs(_os.path.dirname(_os.path.abspath(out)) or ".", exist_ok=True)
+        with open(out, "wb") as g:
+            g.write(resp.content)
+        return ok(f"cosmos3 video2video -> {out} ({len(resp.content)} bytes)",
+                  data={"out": out, "bytes": len(resp.content)})
+    except Exception as e:
+        return err("video2video request failed: " + str(e))
 
 
 # ----- Action / World-Model -----------------------------------------------

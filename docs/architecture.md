@@ -8,13 +8,13 @@ How strands-cosmos is structured internally.
 
 ```
 strands_cosmos/
-├── __init__.py                  # Exports: 4 model providers + 44 tools
+├── __init__.py                  # Exports: 4 model providers + 45 tools
 ├── cosmos_model.py              # Text-only model (Strands Model interface)
 ├── cosmos_vision_model.py       # Vision model (video + image + text)
 │   cosmos3_reasoner_model.py     # Cosmos 3 Reasoner (vLLM, text+vision -> text)
 │   cosmos3_generator_model.py    # Cosmos 3 Generator (Diffusers, -> image/video/sound)
 ├── fix_cublas.py                # Jetson CUBLAS compatibility fix
-├── tools/                       # 44 tools covering full Cosmos lifecycle
+├── tools/                       # 45 tools covering full Cosmos lifecycle
 │   ├── _common.py              # Shared justfile runner utility
 │   ├── cosmos3.py             # 16 Cosmos 3 tools (reason/generate/action/serve)
 │   ├── inference.py            # TRT server inference

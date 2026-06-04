@@ -204,6 +204,7 @@ All tools are `@tool`-decorated functions compatible with any Strands Agent.
 | `cosmos3_text2video` | Text → video (MP4) |
 | `cosmos3_image2video` | Image + text → video |
 | `cosmos3_text2video_sound` | Text → video + synchronized audio (AAC stereo 48kHz) |
+| `cosmos3_video2video` | Re-render an input video with a new prompt (transfer; vLLM-Omni Docker) |
 
 ### Cosmos 3 — Action / World-Model (Cosmos Framework)
 

@@ -91,3 +91,10 @@ def test_justfile_is_locatable():
     jf = _find_justfile()
     assert jf is not None, "justfile not found — justfile-backed tools would fail"
     assert jf.is_file()
+
+
+def test_cosmos3_video2video_tool():
+    from strands_cosmos import cosmos3_video2video
+    assert hasattr(cosmos3_video2video, "tool_spec") or callable(cosmos3_video2video)
+    import strands_cosmos as sc
+    assert "cosmos3_video2video" in sc.__all__
