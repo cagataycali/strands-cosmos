@@ -45,7 +45,7 @@ model = CosmosModel(model_id="nvidia/Cosmos-Reason2-2B")
 ### `Cosmos3ReasonerModel`
 
 **NEW (Cosmos 3).** Omnimodal Reasoner — text + vision → text — served by a local
-vLLM server (no NIM). Captioning, temporal localization, embodied next-action,
+vLLM server. Captioning, temporal localization, embodied next-action,
 2D grounding, physical plausibility, situation understanding, action CoT.
 
 ```python
@@ -86,7 +86,7 @@ Inline media tags: `<video>path-or-url</video>`, `<image>path-or-url</image>`.
 ### `Cosmos3GeneratorModel`
 
 **NEW (Cosmos 3).** Omnimodal Generator — text/image → image/video/**sound** —
-in-process via HuggingFace Diffusers `Cosmos3OmniPipeline` (no NIM, no server).
+in-process via HuggingFace Diffusers `Cosmos3OmniPipeline` (no server).
 
 ```python
 from strands_cosmos import Cosmos3GeneratorModel

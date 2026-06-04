@@ -6,7 +6,7 @@
 
 Cosmos models become first-class **Strands model providers**: give your agent eyes that
 understand physics, and hands that can generate video, audio, and robot actions — plus
-**37 tools** spanning the full Cosmos pipeline. **No NIM required.**
+**37 tools** spanning the full Cosmos pipeline.
 
 | Family | Providers | Best for |
 |--------|-----------|----------|
