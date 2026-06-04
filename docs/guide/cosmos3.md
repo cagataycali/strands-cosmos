@@ -84,6 +84,8 @@ Reasoner capabilities (each has a dedicated tool):
 ```bash
 # Option A — pip extra (Diffusers + cosmos_guardrail + soundfile):
 pip install "strands-cosmos[cosmos3-gen]"
+# Cosmos3OmniPipeline needs the diffusers dev build:
+pip install -U "git+https://github.com/huggingface/diffusers.git"
 
 # Option B — justfile (dedicated CUDA-matched venv):
 just c3-setup-gen   # diffusers(main) + cosmos_guardrail + soundfile (cu130)
