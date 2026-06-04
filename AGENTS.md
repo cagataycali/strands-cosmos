@@ -235,6 +235,39 @@ When multiple agents work on this repo concurrently:
 
 > New entries go AT THE TOP.
 
+### 2026-06-04 — Cosmos 3 integration (branch: feat/cosmos3-integration)
+
+Started deep Cosmos 3 omnimodal support. **No NIM** — local compute only
+(1×L40S 46GB, driver 580 → CUDA 13.0 → cu130 + vllm==0.21.0 pairing locked).
+
+**Phase 0 DONE** (committed):
+- `Cosmos3ReasonerModel` (vLLM OpenAI backend) — strands_cosmos/cosmos3_reasoner_model.py
+  Reasoner path: text+vision→text. Transformers reasoner is "coming soon" upstream,
+  so we go via local vLLM serving `Cosmos3ReasonerForConditionalGeneration`.
+- `Cosmos3GeneratorModel` (Diffusers `Cosmos3OmniPipeline`, in-proc) — generator.
+- 16 `cosmos3_*` tools (thin justfile wrappers): reason/caption/temporal/embodied/
+  ground/plausibility/situation/action_cot + text2image/text2video/image2video/
+  text2video_sound + forward_dynamics/inverse_dynamics/policy + serve.
+- justfile c3-* recipes: c3-doctor, c3-setup-{reason,gen,omni,framework},
+  c3-serve-{reason,omni,status,stop-*}, c3-reason, c3-gen, c3-action.
+- tests/test_cosmos3_imports.py green (3/3). All 16 tools + 2 providers exported.
+- `just` 1.51.0 installed at /tmp/justbin (symlinked ~/.local/bin/just). c3-doctor verified.
+
+**Next (autonomous ambient driving):**
+- Phase 1: `just c3-setup-reason` (uv venv, vllm 0.21.0 + vllm-cosmos3, cu130),
+  `just c3-serve-reason`, then caption ../strands-cosmos-demo-video.mp4 via
+  Cosmos3ReasonerModel; smoke all 8 reasoner tools. Needs HF_TOKEN/`hf auth login`.
+- Phase 2: `just c3-setup-gen` (diffusers main), text2image→text2video→image2video.
+- Phase 3: vLLM-Omni sound + video2video.  Phase 4: Cosmos Framework action.
+- Phase 5: examples 06-12, docs, README/AGENTS update, CI.
+
+**Gotchas learned:**
+- Cosmos-Reason2 path needs transformers>=4.57 (Qwen3VL) + torchcodec==0.2.1
+  (matches torch 2.6 + system FFmpeg 6 / libavutil.so.58). 0.10 fails to load.
+- Use `just_run`/`proc_result` from tools/_common.py (NOT a `run_just` helper).
+- pip needs `--break-system-packages` on this externally-managed host.
+
+
 ### 2026-05-08 — AGENTS.md created (initial)
 
 First AGENTS.md generated from full repo audit. Package at v0.2.0 on PyPI.
