@@ -16,3 +16,4 @@ venv/
 .mypy_cache/
 site/
 *.bak
+strands_cosmos/_version.py

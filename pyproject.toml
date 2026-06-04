@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "strands-cosmos"
-version = "0.3.0"
+dynamic = ["version"]
 description = "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -92,6 +92,12 @@ Issues = "https://github.com/cagataycali/strands-cosmos/issues"
 where = ["."]
 include = ["strands_cosmos*"]
 exclude = ["tests*"]
+
+[tool.setuptools_scm]
+write_to = "strands_cosmos/_version.py"
+# Fall back to this version when building outside a git checkout / before the
+# first v* tag (e.g. sdist installs). Tagged builds use the tag itself.
+fallback_version = "0.3.0"
 
 [tool.ruff]
 line-length = 100

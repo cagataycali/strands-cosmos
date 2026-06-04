@@ -16,6 +16,12 @@ Tools (use inside any Agent):
   - See strands_cosmos.tools for the complete list
 """
 
+try:
+    from strands_cosmos._version import version as __version__
+except ImportError:  # not installed via setuptools-scm build (e.g. editable pre-tag)
+    __version__ = "0.0.0+unknown"
+
+
 from strands_cosmos.cosmos_model import CosmosModel
 from strands_cosmos.cosmos_vision_model import CosmosVisionModel
 from strands_cosmos.cosmos3_reasoner_model import Cosmos3ReasonerModel
@@ -74,6 +80,7 @@ from strands_cosmos.tools import (
 )
 
 __all__ = [
+    "__version__",
     # Model providers
     "CosmosModel",
     "CosmosVisionModel",
