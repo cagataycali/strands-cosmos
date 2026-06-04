@@ -111,6 +111,9 @@ Homepage = "https://github.com/cagataycali/strands-cosmos"
 Repository = "https://github.com/cagataycali/strands-cosmos"
 Issues = "https://github.com/cagataycali/strands-cosmos/issues"
 
+[tool.setuptools.package-data]
+strands_cosmos = ["justfile"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["strands_cosmos*"]

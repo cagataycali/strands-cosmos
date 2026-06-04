@@ -79,3 +79,15 @@ def test_cosmos3_training_tools_in_all():
               "cosmos3_train_prep_dataset", "cosmos3_train_show",
               "cosmos3_train_recipes", "cosmos3_train_export"]:
         assert n in sc.__all__, f"{n} missing from __all__"
+
+
+def test_justfile_is_locatable():
+    """Regression: justfile-backed tools need _find_justfile to resolve a real file.
+
+    Bundled justfile ships at strands_cosmos/justfile (build-time copy) so pip
+    installs work; in a repo checkout the root justfile is found instead.
+    """
+    from strands_cosmos.tools._common import _find_justfile
+    jf = _find_justfile()
+    assert jf is not None, "justfile not found — justfile-backed tools would fail"
+    assert jf.is_file()

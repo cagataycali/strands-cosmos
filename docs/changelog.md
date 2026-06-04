@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-04
+
+### Fixed
+
+- **All justfile-backed tools failed on `pip install`**: the `justfile` (which
+  every `cosmos_*` / `cosmos3_*` tool shells out to) was never packaged, so
+  `_find_justfile()` returned `None` in a pip install and tools errored with
+  exit 127. The justfile is now bundled into the wheel/sdist at
+  `strands_cosmos/justfile` (copied from the repo root at build time) and the
+  lookup resolves it. Verified from a clean wheel install. Added a regression test.
+
 ## [0.4.1] - 2026-06-04
 
 ### Fixed
