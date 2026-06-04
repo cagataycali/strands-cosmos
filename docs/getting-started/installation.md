@@ -73,10 +73,14 @@ graph LR
 backends (vLLM / Diffusers / Cosmos Framework) pin CUDA-specific builds:
 
 ```bash
+# Generator extras via pip (Diffusers + cosmos_guardrail + soundfile):
+pip install "strands-cosmos[cosmos3-gen]"
+
+# Or build dedicated, CUDA-matched venvs with the justfile:
 git clone https://github.com/cagataycali/strands-cosmos && cd strands-cosmos
 just c3-doctor          # reports GPU, driver CUDA, and the torch-backend pairing to use
 just c3-setup-reason    # Reasoner: vllm + vllm-cosmos3
-just c3-setup-gen       # Generator: diffusers(main) + cosmos_guardrail
+just c3-setup-gen       # Generator: diffusers(main) + cosmos_guardrail + soundfile
 just c3-setup-framework # Action / world-model: Cosmos Framework (optional)
 ```
 

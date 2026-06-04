@@ -82,7 +82,11 @@ Reasoner capabilities (each has a dedicated tool):
 ## Generator — image, video & sound (Diffusers, in-process)
 
 ```bash
-just c3-setup-gen   # one-time: diffusers(main) + cosmos_guardrail (cu130)
+# Option A — pip extra (Diffusers + cosmos_guardrail + soundfile):
+pip install "strands-cosmos[cosmos3-gen]"
+
+# Option B — justfile (dedicated CUDA-matched venv):
+just c3-setup-gen   # diffusers(main) + cosmos_guardrail + soundfile (cu130)
 ```
 
 ```python

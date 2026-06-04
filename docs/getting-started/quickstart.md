@@ -44,7 +44,13 @@ image, video, audio, and robot actions. See the full **[Cosmos 3 Guide](../guide
 ```bash
 just c3-doctor          # check GPU / CUDA / uv + recommended torch backend pairing
 just c3-setup-reason    # Reasoner env: vllm + vllm-cosmos3
-just c3-setup-gen       # Generator env: diffusers + cosmos_guardrail
+just c3-setup-gen       # Generator env: diffusers + cosmos_guardrail + soundfile
+```
+
+Or install the generator extras via pip:
+
+```bash
+pip install "strands-cosmos[cosmos3-gen]"   # Diffusers + cosmos_guardrail + soundfile
 ```
 
 ### Reason about a video

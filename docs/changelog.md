@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-04
+
+### Added
+
+- **`cosmos3-gen` optional extra** — `pip install "strands-cosmos[cosmos3-gen]"`
+  installs the Cosmos 3 generator backend in one step (Diffusers dev build,
+  `cosmos_guardrail`, `soundfile`, imageio), making text/image -> image/video/sound
+  generation frictionless without the justfile.
+
+### Fixed
+
+- `just c3-setup-gen` now also installs `soundfile` (required for the
+  video-with-sound audio mux path).
+
 ## [0.3.1] - 2026-06-04
 
 ### Fixed

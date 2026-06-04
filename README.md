@@ -122,7 +122,16 @@ gen.generate(mode="image2video",           prompt="It moves forward.", image="fr
 | [Cosmos3-Super](https://huggingface.co/nvidia/Cosmos3-Super) | 64B | Frontier-scale (multi-GPU / tensor-parallel) |
 | [Cosmos3-Nano-Policy-DROID](https://huggingface.co/nvidia/Cosmos3-Nano-Policy-DROID) | 16B | VL robot policy (DROID) |
 
-### Setup (justfile)
+### Setup
+
+Install the generator extras in one shot (Diffusers + guardrail + audio):
+
+```bash
+pip install "strands-cosmos[cosmos3-gen]"   # text/image -> image/video/sound
+pip install "strands-cosmos[cosmos3]"       # reasoner client (vLLM server)
+```
+
+Or use the justfile to build dedicated, CUDA-matched environments:
 
 ```bash
 just c3-doctor          # check GPU / CUDA / uv / venvs / disk + recommended CUDA pairing

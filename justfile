@@ -775,7 +775,7 @@ c3-setup-gen:
     source "{{C3_GEN_VENV}}/bin/activate"
     uv pip install --torch-backend={{C3_TORCH_BACKEND}} \
       "diffusers @ git+https://github.com/huggingface/diffusers.git" \
-      accelerate av cosmos_guardrail huggingface_hub imageio imageio-ffmpeg \
+      accelerate av cosmos_guardrail huggingface_hub imageio imageio-ffmpeg soundfile \
       torch torchvision transformers
     echo "✅ Generator env ready: {{C3_GEN_VENV}}"
 
