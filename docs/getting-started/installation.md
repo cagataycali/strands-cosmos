@@ -66,8 +66,31 @@ graph LR
     style SA fill:#264653,color:#fff
 ```
 
+## Cosmos 3 Environments (optional)
+
+`pip install strands-cosmos` is all you need for the **Cosmos-Reason2** VLM. The
+**Cosmos 3** omnimodal models use dedicated, uv-managed environments because their
+backends (vLLM / Diffusers / Cosmos Framework) pin CUDA-specific builds:
+
+```bash
+git clone https://github.com/cagataycali/strands-cosmos && cd strands-cosmos
+just c3-doctor          # reports GPU, driver CUDA, and the torch-backend pairing to use
+just c3-setup-reason    # Reasoner: vllm + vllm-cosmos3
+just c3-setup-gen       # Generator: diffusers(main) + cosmos_guardrail
+just c3-setup-framework # Action / world-model: Cosmos Framework (optional)
+```
+
+!!! warning "CUDA pairing"
+    The torch backend must match your driver — CUDA 13 → `cu130` + `vllm==0.21.0`;
+    CUDA 12.8 → `cu128` + `vllm==0.19.1`. `just c3-doctor` prints the recommendation.
+
+See the **[Cosmos 3 Guide](../guide/cosmos3.md)** for full setup and usage.
+
+---
+
 ## What's Next
 
 - [**Quickstart**](quickstart.md) — Your first Cosmos agent in 5 lines
 - [**Video Understanding**](../guide/video-understanding.md) — Process dashcam, robot, and scene videos
 - [**Jetson Deployment**](../guide/jetson.md) — Run on edge hardware
+- [**Cosmos 3 Guide**](../guide/cosmos3.md) — Omnimodal reasoning + generation
