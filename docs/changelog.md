@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-04
+
+### Fixed
+
+- **Video decoding on fresh installs**: `transformers` 5.x decodes video via
+  `torchcodec` and silently falls back to `torchvision`, whose `io.read_video`
+  was removed in `torchvision>=0.27` (`AttributeError` when captioning a video).
+  `torchcodec` is now a core dependency so video works out of the box.
+
 ## [0.3.0] - 2026-06-04
 
 ### Added — Cosmos 3 omnimodal world models 🌌

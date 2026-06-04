@@ -296,6 +296,13 @@ Already handled — `strands-cosmos` pins a compatible transformers range. If yo
 pip install "transformers>=4.57.0,<5.3.0"
 ```
 
+### Video caption fails with `module 'torchvision.io' has no attribute 'read_video'`
+`transformers` 5.x decodes video with `torchcodec` and falls back to `torchvision`,
+which removed `io.read_video` in `>=0.27`. Install torchcodec (now a dependency):
+```bash
+pip install torchcodec
+```
+
 ### TRT tools return exit 127
 Expected on workstations — those tools run on Jetson or in TRT Docker. Run `just doctor`.
 
