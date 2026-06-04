@@ -798,7 +798,7 @@ c3-setup-framework:
     echo "✅ Framework env ready: {{C3_FRAMEWORK_REPO}}/.venv"
 
 # ── Reasoner: serve (Cosmos3-Nano single GPU) ──────────────────────────────
-c3-serve-reason model=C3_MODEL port=C3_REASON_PORT tp="1":
+c3-serve-reason model=C3_MODEL port=C3_REASON_PORT tp="1" max_len="32768":
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{C3_REASON_VENV}}/bin/activate"
@@ -808,6 +808,8 @@ c3-serve-reason model=C3_MODEL port=C3_REASON_PORT tp="1":
       --tensor-parallel-size {{tp}} \
       --mm-encoder-tp-mode data \
       --async-scheduling \
+      --max-model-len {{max_len}} \
+      --gpu-memory-utilization 0.92 \
       --allowed-local-media-path / \
       --media-io-kwargs '{"video": {"num_frames": -1}}' \
       --port {{port}} > "{{C3_REASON_LOG}}" 2>&1 &

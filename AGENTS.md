@@ -235,6 +235,35 @@ When multiple agents work on this repo concurrently:
 
 > New entries go AT THE TOP.
 
+### 2026-06-04 — Cosmos 3 Phase 1 DONE (Reasoner via vLLM verified)
+
+**Phase 1 GATE PASSED.** Cosmos3-Nano reasoner live on local vLLM (no NIM).
+
+- `just c3-setup-reason` succeeded: vllm==0.21.0 + vllm-cosmos3==0.1.0 (cu130).
+  Plugin registers `Cosmos3ReasonerForConditionalGeneration`. (~7GB uv cache dl.)
+- Server: Cosmos3-Nano (16B) on L40S, single GPU, **--max-model-len 32768**
+  (default 262144 needs 36GB KV cache > 21GB free → OOM; capped fixes it).
+  `--gpu-memory-utilization 0.92`. Ready in ~2-3min (weights+torch.compile cached).
+  Uses 41.9GB VRAM. justfile c3-serve-reason updated with max_len + gpu-mem-util params.
+- `Cosmos3ReasonerModel` caption of strands-cosmos-demo-video.mp4: **6.6s**,
+  accurate (front-end loader, church steeple, glass facade, urban setting).
+  Beats Reason2-2B baseline. `just c3-reason ... temporal` also works (timestamps).
+
+**Key learnings:**
+- System python3.12 needs `pip install --break-system-packages openai` for the
+  reasoner provider (separate from the venv).
+- Backgrounding on this host: harness SIGKILLs commands with trailing `sleep`,
+  taking child procs with them. Use a **double-fork daemon** (os.fork/setsid/fork,
+  dup2 log fd) launched in a NO-sleep command → fully orphaned, survives. Pattern
+  saved at /tmp/daemonize.py + /tmp/launch_c3_reason.sh.
+- vllm "[ERROR] ... is part of ... signature but not documented" lines are
+  harmless transformers docstring warnings, not failures.
+- Server start logs: /tmp/c3reason.log. Health: curl localhost:8000/health.
+
+**Next:** Phase 2 (Generator/Diffusers: c3-setup-gen, text2image/video), then
+smoke remaining reasoner tools, Phase 3 (omni sound/v2v), Phase 4 (action), Phase 5.
+
+
 ### 2026-06-04 — Cosmos 3 integration (branch: feat/cosmos3-integration)
 
 Started deep Cosmos 3 omnimodal support. **No NIM** — local compute only
