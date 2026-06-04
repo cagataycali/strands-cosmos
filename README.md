@@ -165,6 +165,10 @@ just c3-gen text2video "A robot in a warehouse." "" out.mp4
 > 16B model and will not fit on one ~46GB GPU simultaneously — stop one before
 > running the other, or dedicate separate GPUs.
 
+### Showcase: Reason → Generate
+
+See **[`demo/cosmos3_showcase/`](demo/cosmos3_showcase/README.md)** for an end-to-end demo: Cosmos 3 reasons about a real construction-site video, then generates similar videos (incl. one with **synchronized audio**) from its own description — all local, no NIM. Reproduce with `python examples/09_cosmos3_showcase.py`.
+
 > **CUDA pairing:** match the torch backend to your driver — CUDA 13 → `cu130` +
 > `vllm==0.21.0`; CUDA 12.8 → `cu128` + `vllm==0.19.1`. (`just c3-doctor` reports this.)
 
