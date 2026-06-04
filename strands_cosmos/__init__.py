@@ -77,6 +77,14 @@ from strands_cosmos.tools import (
     cosmos3_inverse_dynamics,
     cosmos3_policy,
     cosmos3_serve,
+    # Cosmos 3 training
+    cosmos3_train_recipes,
+    cosmos3_train_show,
+    cosmos3_train_convert,
+    cosmos3_train_convert_vlm,
+    cosmos3_train_prep_dataset,
+    cosmos3_train,
+    cosmos3_train_export,
 )
 
 __all__ = [
@@ -133,4 +141,12 @@ __all__ = [
     "cosmos3_inverse_dynamics",
     "cosmos3_policy",
     "cosmos3_serve",
+    # Cosmos 3 training
+    "cosmos3_train_recipes",
+    "cosmos3_train_show",
+    "cosmos3_train_convert",
+    "cosmos3_train_convert_vlm",
+    "cosmos3_train_prep_dataset",
+    "cosmos3_train",
+    "cosmos3_train_export",
 ]

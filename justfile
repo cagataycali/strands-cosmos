@@ -750,6 +750,13 @@ c3-doctor:
     [ -d "{{C3_REPO}}" ] && echo "  present" || echo "  missing -> git clone git@github.com:NVIDIA/cosmos.git {{C3_REPO}}"
     echo "-- Framework checkout ({{C3_FRAMEWORK_REPO}}) --"
     [ -d "{{C3_FRAMEWORK_REPO}}" ] && echo "  present" || echo "  missing -> just c3-setup-framework"
+    echo "-- Training (SFT) --"
+    if [ -d "{{C3_FRAMEWORK_REPO}}/.venv" ]; then
+      echo "  framework venv present -> just c3-train-recipes to list SFT recipes"
+      echo "  (full SFT tested on 8x H100; convert/config steps run on any GPU)"
+    else
+      echo "  missing -> just c3-setup-framework"
+    fi
     echo "-- Disk free --"
     df -h . | tail -1
     echo "=== done ==="
@@ -934,3 +941,98 @@ build-dist:
 publish: build-dist
     {{PYTHON}} -m pip install --upgrade twine
     {{PYTHON}} -m twine upload dist/*
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Cosmos 3 — Post-Training (Supervised Fine-Tuning) via Cosmos Framework
+# Wraps cosmos_framework SFT. Tested upstream on 8× H100 (80GB). On smaller
+# GPUs you can validate config/dataset/checkpoint steps; full SFT needs the
+# documented multi-GPU allocation.
+# ══════════════════════════════════════════════════════════════════════════
+
+C3_TRAIN_NPROC      := env_var_or_default("C3_TRAIN_NPROC", "8")
+C3_TRAIN_OUTPUT     := env_var_or_default("C3_TRAIN_OUTPUT", "outputs/train")
+
+# List the available SFT recipes shipped with the framework checkout.
+c3-train-recipes:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    echo "=== Cosmos 3 SFT recipes (examples/toml/sft_config) ==="
+    ls examples/toml/sft_config/*.toml 2>/dev/null | sed 's#.*/##;s/\.toml$//' || echo "framework not set up -> just c3-setup-framework"
+    echo ""
+    echo "=== paired launch shells (examples/) ==="
+    ls examples/launch_sft_*.sh 2>/dev/null | sed 's#.*/##' || true
+
+# Step 2 — convert a base checkpoint to PyTorch DCP for training.
+c3-train-convert checkpoint=C3_MODEL out="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    name="$(basename '{{checkpoint}}')"
+    out="{{out}}"; out="${out:-examples/checkpoints/$name}"
+    .venv/bin/python -m cosmos_framework.scripts.convert_model_to_dcp \
+      -o "$out" --checkpoint-path "{{checkpoint}}"
+    echo "DCP checkpoint -> $out"
+
+# Step 2 (reasoner VLM) — merge Cosmos3 LM onto the Qwen3-VL visual tower.
+c3-train-convert-vlm checkpoint=C3_MODEL out="examples/checkpoints/Cosmos3-Nano-VLM":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    .venv/bin/python -m cosmos_framework.scripts.convert_model_to_vlm_safetensors \
+      --checkpoint-path "{{checkpoint}}" -o "{{out}}"
+    echo "VLM safetensors -> {{out}}"
+
+# Step 1 helper — turn a captions JSONL into an SFT dataset JSONL.
+c3-train-prep-dataset captions out:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    .venv/bin/python -m cosmos_framework.scripts.captions_to_sft_jsonl \
+      "$@" 2>/dev/null || .venv/bin/python -m cosmos_framework.scripts.captions_to_sft_jsonl \
+      --input "{{captions}}" --output "{{out}}"
+    echo "SFT dataset -> {{out}}"
+
+# Validate / export the resolved training config for a recipe TOML (no GPU).
+c3-train-show recipe="vision_sft_nano":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    toml="examples/toml/sft_config/{{recipe}}.toml"
+    [ -f "$toml" ] || { echo "no such recipe: {{recipe}} (try: just c3-train-recipes)"; exit 1; }
+    .venv/bin/python -m cosmos_framework.scripts.train --sft-toml="$toml" --dryrun 2>&1 | tail -60 \
+      || { echo "(dryrun unavailable; showing raw recipe TOML)"; cat "$toml"; }
+
+# Step 3 — run SFT. Prefer the paired launch shell (handles paths + checks).
+# recipe: vision_sft_nano | vision_sft_super | llava_ov | videophy2_nano
+# nproc: GPUs (default 8). dataset/checkpoint: override default paths.
+c3-train recipe="vision_sft_nano" nproc=C3_TRAIN_NPROC dataset="" checkpoint="" overrides="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    launch="examples/launch_sft_{{recipe}}.sh"
+    [ -f "$launch" ] || { echo "no launch shell for recipe '{{recipe}}' (try: just c3-train-recipes)"; exit 1; }
+    export NPROC_PER_NODE="{{nproc}}"
+    export OUTPUT_ROOT="${OUTPUT_ROOT:-{{C3_TRAIN_OUTPUT}}}"
+    [ -n "{{dataset}}" ]    && export DATASET_PATH="{{dataset}}"
+    [ -n "{{checkpoint}}" ] && export BASE_CHECKPOINT_PATH="{{checkpoint}}"
+    if [ -n "{{overrides}}" ]; then
+      bash "$launch" -- {{overrides}}
+    else
+      bash "$launch"
+    fi
+
+# Step 4 — export a trained DCP checkpoint to HF safetensors.
+c3-train-export run_dir out="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    iter="$(cat '{{run_dir}}/checkpoints/latest_checkpoint.txt')"
+    ckpt="{{run_dir}}/checkpoints/$iter"
+    out="{{out}}"; out="${out:-{{run_dir}}/hf_export}"
+    .venv/bin/python -m cosmos_framework.scripts.export_model \
+      --checkpoint-path "$ckpt" -o "$out" 2>/dev/null \
+      || .venv/bin/python -m cosmos_framework.scripts.convert_model_to_diffusers \
+      --checkpoint-path "$ckpt" -o "$out"
+    echo "HF export -> $out"

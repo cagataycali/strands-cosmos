@@ -11,7 +11,7 @@
 
 **NVIDIA Cosmos toolkit for [Strands Agents](https://strandsagents.com) — from VLM reasoning to world-model generation, edge deployment, and evaluation.**
 
-Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3** omnimodal Reasoner & Generator) plus **37 tools** covering the entire NVIDIA Cosmos ecosystem: VLM reasoning, world-model generation (image/video/**audio**/**action**), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation. **Local compute.**
+Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3** omnimodal Reasoner & Generator) plus **44 tools** covering the entire NVIDIA Cosmos ecosystem: VLM reasoning, world-model generation (image/video/**audio**/**action**), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation. **Local compute.**
 
 ---
 
@@ -19,7 +19,7 @@ Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3*
 
 Cosmos models become first-class **Strands model providers** — give your agent eyes
 that understand physics, and hands that can generate video, audio, and robot actions.
-Plus **37 tools** spanning the full Cosmos pipeline (inference, generation, curation,
+Plus **44 tools** spanning the full Cosmos pipeline (inference, generation, curation,
 post-training, quantization, edge deployment, evaluation).
 
 | Family | Providers | Best for |
@@ -112,6 +112,7 @@ gen.generate(mode="image2video",           prompt="It moves forward.", image="fr
 | **Reasoner** | `cosmos3_reason`, `cosmos3_caption`, `cosmos3_temporal`, `cosmos3_embodied`, `cosmos3_ground`, `cosmos3_plausibility`, `cosmos3_situation`, `cosmos3_action_cot` | vLLM |
 | **Generator** | `cosmos3_text2image`, `cosmos3_text2video`, `cosmos3_image2video`, `cosmos3_text2video_sound` | Diffusers `Cosmos3OmniPipeline` (in-proc) |
 | **Action / World-Model** | `cosmos3_forward_dynamics`, `cosmos3_inverse_dynamics`, `cosmos3_policy` | Cosmos Framework (torchrun) |
+| **Training (SFT)** | `cosmos3_train`, `cosmos3_train_convert`, `cosmos3_train_show`, `cosmos3_train_export`, … | Cosmos Framework (torchrun) |
 | **Servers** | `cosmos3_serve` | start / stop / status |
 
 ### Cosmos 3 models
@@ -142,8 +143,10 @@ just c3-reason "Caption in detail." "" scene.mp4 caption
 just c3-setup-gen       # Generator env: diffusers(main) + cosmos_guardrail
 just c3-gen text2video "A robot in a warehouse." "" out.mp4
 
-just c3-setup-framework # Action env: Cosmos Framework
+just c3-setup-framework # Action + training env: Cosmos Framework
 just c3-action spec.jsonl /tmp/out      # forward/inverse dynamics, policy
+just c3-train-recipes                   # list SFT recipes
+just c3-train vision_sft_nano           # fine-tune (8x H100); see the training guide
 ```
 
 > **CUDA pairing:** match the torch backend to your driver — CUDA 13 → `cu130` + `vllm==0.21.0`;
@@ -152,7 +155,7 @@ just c3-action spec.jsonl /tmp/out      # forward/inverse dynamics, policy
 > **Single-GPU note:** the reasoner (vLLM) and generator (Diffusers) each load a 16B model and
 > won't fit on one ~46GB GPU together — stop one before running the other, or use separate GPUs.
 
-📖 Full guide: **[docs/guide/cosmos3.md](https://cagataycali.github.io/strands-cosmos/guide/cosmos3/)**
+📖 Full guides: **[Cosmos 3](https://cagataycali.github.io/strands-cosmos/guide/cosmos3/)** · **[Training/SFT](https://cagataycali.github.io/strands-cosmos/guide/cosmos3-training/)**
 
 ---
 

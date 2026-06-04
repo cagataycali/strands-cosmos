@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-04
+
+### Added — Cosmos 3 post-training (SFT)
+
+- **7 `cosmos3_train_*` tools** + **`c3-train-*` justfile recipes** wrapping the
+  NVIDIA Cosmos Framework supervised fine-tuning stack:
+  `cosmos3_train_recipes`, `cosmos3_train_show`, `cosmos3_train_convert`,
+  `cosmos3_train_convert_vlm`, `cosmos3_train_prep_dataset`, `cosmos3_train`,
+  `cosmos3_train_export`.
+- Full 4-step flow: checkpoint → DCP convert, dataset prep, SFT run (paired
+  launch shell / `torchrun -m cosmos_framework.scripts.train`), and DCP → HF
+  safetensors export. Recipes: vision_sft_nano/super, llava_ov, videophy2_nano.
+- New **[Cosmos 3 Training guide](docs/guide/cosmos3-training.md)** +
+  `examples/10_cosmos3_finetune.py`; `c3-doctor` reports the training env.
+- Validated locally (no 8× H100 needed): `c3-train-recipes` lists recipes and
+  `c3-train-show` resolves/validates the full SFT config via `train.py --dryrun`.
+
 ## [0.3.2] - 2026-06-04
 
 ### Added
@@ -116,7 +133,8 @@ and action. Runs on local compute (vLLM / Diffusers / Cosmos Framework).
 - Jetson CUBLAS compatibility fix (`strands-cosmos-fix-cublas`).
 - Dashcam safety-analysis demo.
 
-[Unreleased]: https://github.com/cagataycali/strands-cosmos/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/cagataycali/strands-cosmos/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/cagataycali/strands-cosmos/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/cagataycali/strands-cosmos/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/cagataycali/strands-cosmos/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/cagataycali/strands-cosmos/compare/v0.2.0...v0.3.0

@@ -219,6 +219,22 @@ All tools are `@tool`-decorated functions compatible with any Strands Agent.
 |------|-------------|
 | `cosmos3_serve` | Start/stop/status local vLLM (reason) / vLLM-Omni (omni) servers |
 
+### Cosmos 3 — Post-Training (SFT)
+
+Supervised fine-tuning via the Cosmos Framework (`torchrun`). Tested upstream on 8× H100.
+
+| Tool | Description |
+|------|-------------|
+| `cosmos3_train_recipes` | List SFT recipes + launch shells |
+| `cosmos3_train_show` | Validate/print a recipe's resolved config (dry run) |
+| `cosmos3_train_convert` | Base checkpoint → PyTorch DCP |
+| `cosmos3_train_convert_vlm` | LM → Qwen3-VL visual tower (reasoner VLM) |
+| `cosmos3_train_prep_dataset` | captions JSONL → SFT dataset JSONL |
+| `cosmos3_train` | Run SFT via the paired launch shell |
+| `cosmos3_train_export` | Trained DCP → HF safetensors |
+
+See the [Cosmos 3 Training guide](guide/cosmos3-training.md) for the full flow.
+
 ### Legacy (backward-compatible)
 
 | Tool | Parameters | Description |
