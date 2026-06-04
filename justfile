@@ -735,7 +735,13 @@ c3-doctor:
     echo "-- uv --"
     command -v uv >/dev/null && uv --version || echo "uv NOT installed (https://docs.astral.sh/uv/)"
     echo "-- HF auth --"
-    (python3 -c "import os;print('HF_TOKEN set' if os.getenv('HF_TOKEN') else 'HF_TOKEN NOT set; run: uvx hf@latest auth login')") 2>/dev/null || true
+    if [ -n "${HF_TOKEN:-}" ] || [ -n "${HUGGING_FACE_HUB_TOKEN:-}" ]; then
+      echo "  authenticated (env token)"
+    elif [ -f "${HF_HOME:-$HOME/.cache/huggingface}/token" ] || [ -f "$HOME/.cache/huggingface/token" ]; then
+      echo "  authenticated (cached token)"
+    else
+      echo "  NOT authenticated; run: uvx hf@latest auth login (or export HF_TOKEN=...)"
+    fi
     echo "-- Reasoner venv ({{C3_REASON_VENV}}) --"
     [ -d "{{C3_REASON_VENV}}" ] && echo "  present" || echo "  missing -> just c3-setup-reason"
     echo "-- Generator venv ({{C3_GEN_VENV}}) --"
@@ -823,10 +829,20 @@ c3-serve-stop-reason:
 
 c3-serve-status:
     #!/usr/bin/env bash
-    for n in reason omni; do
-      pf="/tmp/c3-${n}-server.pid"
-      if [ -f "$pf" ] && kill -0 "$(cat $pf)" 2>/dev/null; then echo "$n: running (pid $(cat $pf))"; else echo "$n: stopped"; fi
-    done
+    # Detect servers by PID file OR by a live HTTP /health on their port.
+    # This recognizes both recipe-launched and directly-launched servers.
+    check() {
+      local name="$1" pf="$2" port="$3"
+      if [ -f "$pf" ] && kill -0 "$(cat "$pf")" 2>/dev/null; then
+        echo "$name: running (pid $(cat "$pf"), port $port)"
+      elif curl -sf -o /dev/null "http://localhost:$port/health" 2>/dev/null; then
+        echo "$name: running (port $port, no pidfile)"
+      else
+        echo "$name: stopped"
+      fi
+    }
+    check reason "{{C3_REASON_PID}}" "{{C3_REASON_PORT}}"
+    check omni   "{{C3_OMNI_PID}}"   "{{C3_OMNI_PORT}}"
 
 # ── Reasoner: one-shot inference via OpenAI client ─────────────────────────
 c3-reason prompt image="" video="" task="" port=C3_REASON_PORT max_tokens="4096" think="false":
