@@ -42,6 +42,20 @@ jobs:
       run: |
         python -m build
 
+    - name: Guard against PyPI-forbidden direct-URL dependencies
+      run: |
+        python -c "
+        import glob, zipfile, sys
+        bad = []
+        for whl in glob.glob('dist/*.whl'):
+            z = zipfile.ZipFile(whl)
+            md = [n for n in z.namelist() if n.endswith('METADATA')][0]
+            bad += [l for l in z.read(md).decode().splitlines() if l.startswith('Requires-Dist') and ('git+' in l or ' @ ' in l)]
+        if bad:
+            print('::error::PyPI forbids direct-URL deps:'); [print(' ', b) for b in bad]; sys.exit(1)
+        print('OK: no direct-URL dependencies in built metadata')
+        "
+
     - name: Publish to PyPI
       env:
         TWINE_USERNAME: __token__

@@ -129,6 +129,7 @@ Install the generator extras in one shot (Diffusers + guardrail + audio):
 
 ```bash
 pip install "strands-cosmos[cosmos3-gen]"   # text/image -> image/video/sound
+pip install -U "git+https://github.com/huggingface/diffusers.git"  # Cosmos3OmniPipeline (dev build)
 pip install "strands-cosmos[cosmos3]"       # reasoner client (vLLM server)
 ```
 

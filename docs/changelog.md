@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-04
+
+### Fixed
+
+- **PyPI publish failure (0.3.2 / 0.4.0 never reached PyPI)**: the `cosmos3-gen`
+  and `all` extras declared a direct-URL dependency
+  (`diffusers @ git+https://...`), which PyPI rejects on upload. The extras now
+  require plain `diffusers>=0.36`; the Cosmos3OmniPipeline dev build is installed
+  separately via `just c3-setup-gen` or
+  `pip install -U "git+https://github.com/huggingface/diffusers.git"`.
+- Release workflow now fails fast if built metadata contains any direct-URL
+  dependency (guard step before PyPI publish).
+
 ## [0.4.0] - 2026-06-04
 
 ### Added — Cosmos 3 post-training (SFT)

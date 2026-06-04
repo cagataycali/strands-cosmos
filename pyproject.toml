@@ -69,7 +69,11 @@ cosmos3 = [
 # diffusers must be the dev build (Cosmos3OmniPipeline); cosmos_guardrail is the
 # required safety checker; soundfile + imageio handle audio muxing / video write.
 cosmos3-gen = [
-    "diffusers @ git+https://github.com/huggingface/diffusers.git",
+    # NOTE: the Cosmos 3 generator needs the diffusers *dev* build that ships
+    # Cosmos3OmniPipeline. PyPI forbids direct-URL deps in published metadata, so
+    # we require plain `diffusers` here and pin the dev build at install time via
+    # `just c3-setup-gen` (or `pip install -U "git+https://github.com/huggingface/diffusers.git"`).
+    "diffusers>=0.36",
     "cosmos_guardrail",
     "soundfile",
     "imageio",
@@ -90,7 +94,7 @@ all = [
     "strands-agents-tools",
     "vllm>=0.11.0",
     "openai>=1.0.0",
-    "diffusers @ git+https://github.com/huggingface/diffusers.git",
+    "diffusers>=0.36",
     "cosmos_guardrail",
     "soundfile",
     "imageio",
