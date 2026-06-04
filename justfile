@@ -699,3 +699,203 @@ lint:
 
 format:
     {{PYTHON}} -m ruff format strands_cosmos/
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Cosmos 3 — omnimodal world models (Reasoner + Generator + Action)
+# No NIM. Local compute. uv-managed venvs. cu130 to match CUDA 13 driver.
+# Branch: feat/cosmos3-integration
+# ══════════════════════════════════════════════════════════════════════════
+
+# Cosmos 3 config
+C3_REPO            := env_var_or_default("C3_REPO", "../cosmos")
+C3_FRAMEWORK_REPO  := env_var_or_default("C3_FRAMEWORK_REPO", "../cosmos/packages/cosmos3")
+C3_MODEL           := env_var_or_default("C3_MODEL", "nvidia/Cosmos3-Nano")
+C3_TORCH_BACKEND   := env_var_or_default("C3_TORCH_BACKEND", "cu130")
+C3_VLLM_VERSION    := env_var_or_default("C3_VLLM_VERSION", "0.21.0")
+C3_REASON_VENV     := env_var_or_default("C3_REASON_VENV", ".venv-c3-reason")
+C3_GEN_VENV        := env_var_or_default("C3_GEN_VENV", ".venv-c3-gen")
+C3_REASON_PORT     := env_var_or_default("C3_REASON_PORT", "8000")
+C3_OMNI_PORT       := env_var_or_default("C3_OMNI_PORT", "8001")
+C3_REASON_PID      := env_var_or_default("C3_REASON_PID", "/tmp/c3-reason-server.pid")
+C3_REASON_LOG      := env_var_or_default("C3_REASON_LOG", "/tmp/c3-reason-server.log")
+C3_OMNI_PID        := env_var_or_default("C3_OMNI_PID", "/tmp/c3-omni-server.pid")
+C3_OMNI_LOG        := env_var_or_default("C3_OMNI_LOG", "/tmp/c3-omni-server.log")
+
+# ── Cosmos 3 environment doctor ────────────────────────────────────────────
+c3-doctor:
+    #!/usr/bin/env bash
+    echo "=== Cosmos 3 Doctor ==="
+    echo "-- GPU --"
+    nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version --format=csv,noheader 2>/dev/null || echo "no nvidia-smi"
+    echo "-- Driver CUDA --"
+    nvidia-smi 2>/dev/null | grep -o "CUDA Version: [0-9.]*" || true
+    echo "-- torch-backend pairing --  (driver CUDA 13 -> cu130 + vllm==0.21.0; CUDA 12.8 -> cu128 + vllm==0.19.1)"
+    echo "  C3_TORCH_BACKEND={{C3_TORCH_BACKEND}}  C3_VLLM_VERSION={{C3_VLLM_VERSION}}"
+    echo "-- uv --"
+    command -v uv >/dev/null && uv --version || echo "uv NOT installed (https://docs.astral.sh/uv/)"
+    echo "-- HF auth --"
+    (python3 -c "import os;print('HF_TOKEN set' if os.getenv('HF_TOKEN') else 'HF_TOKEN NOT set; run: uvx hf@latest auth login')") 2>/dev/null || true
+    echo "-- Reasoner venv ({{C3_REASON_VENV}}) --"
+    [ -d "{{C3_REASON_VENV}}" ] && echo "  present" || echo "  missing -> just c3-setup-reason"
+    echo "-- Generator venv ({{C3_GEN_VENV}}) --"
+    [ -d "{{C3_GEN_VENV}}" ] && echo "  present" || echo "  missing -> just c3-setup-gen"
+    echo "-- Cosmos repo ({{C3_REPO}}) --"
+    [ -d "{{C3_REPO}}" ] && echo "  present" || echo "  missing -> git clone git@github.com:NVIDIA/cosmos.git {{C3_REPO}}"
+    echo "-- Framework checkout ({{C3_FRAMEWORK_REPO}}) --"
+    [ -d "{{C3_FRAMEWORK_REPO}}" ] && echo "  present" || echo "  missing -> just c3-setup-framework"
+    echo "-- Disk free --"
+    df -h . | tail -1
+    echo "=== done ==="
+
+# ── Setup: Reasoner (vLLM + vllm-cosmos3) ──────────────────────────────────
+c3-setup-reason:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v uv >/dev/null || { echo "install uv first: https://docs.astral.sh/uv/"; exit 1; }
+    uv venv --python 3.13 --seed --managed-python "{{C3_REASON_VENV}}"
+    source "{{C3_REASON_VENV}}/bin/activate"
+    uv pip install --torch-backend={{C3_TORCH_BACKEND}} "vllm=={{C3_VLLM_VERSION}}" \
+      "vllm-cosmos3 @ git+https://github.com/NVIDIA/cosmos-framework.git#subdirectory=packages/vllm-cosmos3" \
+      openai
+    echo "✅ Reasoner env ready: {{C3_REASON_VENV}}"
+
+# ── Setup: Generator (Diffusers in-proc) ───────────────────────────────────
+c3-setup-gen:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v uv >/dev/null || { echo "install uv first: https://docs.astral.sh/uv/"; exit 1; }
+    uv venv --python 3.13 --seed --managed-python "{{C3_GEN_VENV}}"
+    source "{{C3_GEN_VENV}}/bin/activate"
+    uv pip install --torch-backend={{C3_TORCH_BACKEND}} \
+      "diffusers @ git+https://github.com/huggingface/diffusers.git" \
+      accelerate av cosmos_guardrail huggingface_hub imageio imageio-ffmpeg \
+      torch torchvision transformers
+    echo "✅ Generator env ready: {{C3_GEN_VENV}}"
+
+# ── Setup: vLLM-Omni (Generator server) ────────────────────────────────────
+c3-setup-omni:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "vLLM-Omni full-modality is easiest via Docker image: vllm/vllm-omni:cosmos3"
+    echo "PR-branch (3 merged modes) install:"
+    command -v uv >/dev/null || { echo "install uv first"; exit 1; }
+    uv venv --python 3.13 --seed --managed-python ".venv-c3-omni"
+    source ".venv-c3-omni/bin/activate"
+    uv pip install --torch-backend={{C3_TORCH_BACKEND}} \
+      "vllm-omni @ git+https://github.com/vllm-project/vllm-omni.git@refs/pull/3454/head"
+    echo "✅ Omni env ready (text2image/text2video/image2video). For all modalities use the docker image."
+
+# ── Setup: Cosmos Framework (Action via torchrun) ──────────────────────────
+c3-setup-framework:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{C3_REPO}}/packages"
+    [ -d "{{C3_FRAMEWORK_REPO}}" ] || git clone https://github.com/NVIDIA/cosmos-framework.git "{{C3_FRAMEWORK_REPO}}"
+    cd "{{C3_FRAMEWORK_REPO}}"
+    export GIT_LFS_SKIP_SMUDGE=1
+    uv sync --all-extras --group={{C3_TORCH_BACKEND}}-train
+    echo "✅ Framework env ready: {{C3_FRAMEWORK_REPO}}/.venv"
+
+# ── Reasoner: serve (Cosmos3-Nano single GPU) ──────────────────────────────
+c3-serve-reason model=C3_MODEL port=C3_REASON_PORT tp="1":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{C3_REASON_VENV}}/bin/activate"
+    export VLLM_USE_DEEP_GEMM=${VLLM_USE_DEEP_GEMM:-0}
+    nohup vllm serve "{{model}}" \
+      --hf-overrides '{"architectures": ["Cosmos3ReasonerForConditionalGeneration"]}' \
+      --tensor-parallel-size {{tp}} \
+      --mm-encoder-tp-mode data \
+      --async-scheduling \
+      --allowed-local-media-path / \
+      --media-io-kwargs '{"video": {"num_frames": -1}}' \
+      --port {{port}} > "{{C3_REASON_LOG}}" 2>&1 &
+    echo $! > "{{C3_REASON_PID}}"
+    echo "🚀 Reasoner serving (pid $(cat {{C3_REASON_PID}})) on :{{port}} — log: {{C3_REASON_LOG}}"
+    echo "   poll: curl -s localhost:{{port}}/health"
+
+c3-serve-stop-reason:
+    #!/usr/bin/env bash
+    [ -f "{{C3_REASON_PID}}" ] && kill "$(cat {{C3_REASON_PID}})" 2>/dev/null && rm -f "{{C3_REASON_PID}}" && echo "stopped" || echo "no reason server pid"
+
+c3-serve-status:
+    #!/usr/bin/env bash
+    for n in reason omni; do
+      pf="/tmp/c3-${n}-server.pid"
+      if [ -f "$pf" ] && kill -0 "$(cat $pf)" 2>/dev/null; then echo "$n: running (pid $(cat $pf))"; else echo "$n: stopped"; fi
+    done
+
+# ── Reasoner: one-shot inference via OpenAI client ─────────────────────────
+c3-reason prompt image="" video="" task="" port=C3_REASON_PORT max_tokens="4096" think="false":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{C3_REASON_VENV}}/bin/activate" 2>/dev/null || true
+    python3 - "$@" <<'PY'
+    import os, sys
+    from openai import OpenAI
+    prompt, image, video, task = """{{prompt}}""", "{{image}}", "{{video}}", "{{task}}"
+    think = "{{think}}".lower() == "true"
+    port = "{{port}}"
+    client = OpenAI(base_url=f"http://localhost:{port}/v1", api_key="EMPTY")
+    model = client.models.list().data[0].id
+    content = []
+    if image: content.append({"type": "image_url", "image_url": {"url": image if image.startswith("http") else f"file://{os.path.abspath(image)}"}})
+    if video: content.append({"type": "video_url", "video_url": {"url": video if video.startswith("http") else f"file://{os.path.abspath(video)}"}})
+    text = prompt
+    if think: text += "\n\nAnswer in the format: <think>\nreasoning\n</think>\n\n<answer>\nanswer\n</answer>."
+    content.append({"type": "text", "text": text})
+    r = client.chat.completions.create(model=model, messages=[{"role":"user","content":content}],
+        max_tokens={{max_tokens}}, temperature=0.6 if think else 0.7, top_p=0.95 if think else 0.8,
+        presence_penalty=0.0 if think else 1.5, seed=0)
+    print(r.choices[0].message.content)
+    PY
+
+# ── Generator: in-proc Diffusers generation ────────────────────────────────
+c3-gen mode="text2video" prompt="" image="" out="/tmp/c3_out.mp4" frames="189" fps="24" steps="35" guidance="6.0" res="720" sound="false" seed="0":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source "{{C3_GEN_VENV}}/bin/activate" 2>/dev/null || true
+    python3 - <<'PY'
+    import sys
+    sys.path.insert(0, ".")
+    from strands_cosmos.cosmos3_generator_model import Cosmos3GeneratorModel
+    m = Cosmos3GeneratorModel(model_id="{{C3_MODEL}}")
+    out = m.generate(mode="{{mode}}", prompt="""{{prompt}}""",
+        out_path="{{out}}", image="{{image}}" or None,
+        num_frames={{frames}}, fps={{fps}}, num_inference_steps={{steps}},
+        guidance_scale={{guidance}}, resolution="{{res}}",
+        enable_sound="{{sound}}".lower()=="true", seed={{seed}})
+    print(out)
+    PY
+
+# ── Generator server (vLLM-Omni) ───────────────────────────────────────────
+c3-serve-omni model=C3_MODEL port=C3_OMNI_PORT:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source ".venv-c3-omni/bin/activate" 2>/dev/null || true
+    nohup vllm serve "{{model}}" --omni \
+      --model-class-name Cosmos3OmniDiffusersPipeline \
+      --allowed-local-media-path / --port {{port}} --init-timeout 1800 \
+      > "{{C3_OMNI_LOG}}" 2>&1 &
+    echo $! > "{{C3_OMNI_PID}}"
+    echo "🚀 Omni serving (pid $(cat {{C3_OMNI_PID}})) on :{{port}} — log: {{C3_OMNI_LOG}}"
+
+c3-serve-stop-omni:
+    #!/usr/bin/env bash
+    [ -f "{{C3_OMNI_PID}}" ] && kill "$(cat {{C3_OMNI_PID}})" 2>/dev/null && rm -f "{{C3_OMNI_PID}}" && echo "stopped" || echo "no omni server pid"
+
+# ── Action / World-Model (Cosmos Framework, torchrun) ──────────────────────
+c3-action mode="forward_dynamics" input_json="" out="/tmp/c3_action" checkpoint="Cosmos3-Nano" seed="0":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    COSMOS_TRAINING=false CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} \
+    MASTER_ADDR=127.0.0.1 MASTER_PORT=29501 RANK=0 WORLD_SIZE=1 LOCAL_RANK=0 \
+    .venv/bin/python -m cosmos_framework.scripts.inference \
+      --parallelism-preset=latency \
+      -i "{{input_json}}" \
+      -o "{{out}}" \
+      --checkpoint-path "{{checkpoint}}" \
+      --seed={{seed}} --benchmark
+    echo "✅ action ({{mode}}) output -> {{out}}"

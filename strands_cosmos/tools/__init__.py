@@ -56,6 +56,27 @@ from strands_cosmos.tools.sysinfo import cosmos_sysinfo
 from strands_cosmos.tools.cosmos_invoke import cosmos_invoke
 from strands_cosmos.tools.cosmos_vision_invoke import cosmos_vision_invoke
 
+
+# ── Cosmos 3 (omnimodal: Reasoner + Generator + Action) ───────────────────
+from strands_cosmos.tools.cosmos3 import (
+    cosmos3_reason,
+    cosmos3_caption,
+    cosmos3_temporal,
+    cosmos3_embodied,
+    cosmos3_ground,
+    cosmos3_plausibility,
+    cosmos3_situation,
+    cosmos3_action_cot,
+    cosmos3_text2image,
+    cosmos3_text2video,
+    cosmos3_image2video,
+    cosmos3_text2video_sound,
+    cosmos3_forward_dynamics,
+    cosmos3_inverse_dynamics,
+    cosmos3_policy,
+    cosmos3_serve,
+)
+
 __all__ = [
     # Reason2 VLM
     "cosmos_inference",
@@ -88,4 +109,21 @@ __all__ = [
     # Legacy
     "cosmos_invoke",
     "cosmos_vision_invoke",
+    # Cosmos 3
+    "cosmos3_reason",
+    "cosmos3_caption",
+    "cosmos3_temporal",
+    "cosmos3_embodied",
+    "cosmos3_ground",
+    "cosmos3_plausibility",
+    "cosmos3_situation",
+    "cosmos3_action_cot",
+    "cosmos3_text2image",
+    "cosmos3_text2video",
+    "cosmos3_image2video",
+    "cosmos3_text2video_sound",
+    "cosmos3_forward_dynamics",
+    "cosmos3_inverse_dynamics",
+    "cosmos3_policy",
+    "cosmos3_serve",
 ]

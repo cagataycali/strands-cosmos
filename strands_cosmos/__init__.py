@@ -14,6 +14,8 @@ Tools (use inside any Agent):
 
 from strands_cosmos.cosmos_model import CosmosModel
 from strands_cosmos.cosmos_vision_model import CosmosVisionModel
+from strands_cosmos.cosmos3_reasoner_model import Cosmos3ReasonerModel
+from strands_cosmos.cosmos3_generator_model import Cosmos3GeneratorModel
 
 # Export all tools for convenient access
 from strands_cosmos.tools import (
@@ -48,12 +50,31 @@ from strands_cosmos.tools import (
     # Legacy
     cosmos_invoke,
     cosmos_vision_invoke,
+    # Cosmos 3
+    cosmos3_reason,
+    cosmos3_caption,
+    cosmos3_temporal,
+    cosmos3_embodied,
+    cosmos3_ground,
+    cosmos3_plausibility,
+    cosmos3_situation,
+    cosmos3_action_cot,
+    cosmos3_text2image,
+    cosmos3_text2video,
+    cosmos3_image2video,
+    cosmos3_text2video_sound,
+    cosmos3_forward_dynamics,
+    cosmos3_inverse_dynamics,
+    cosmos3_policy,
+    cosmos3_serve,
 )
 
 __all__ = [
     # Model providers
     "CosmosModel",
     "CosmosVisionModel",
+    "Cosmos3ReasonerModel",
+    "Cosmos3GeneratorModel",
     # Reason2 VLM
     "cosmos_inference",
     "cosmos_reason_hf",
@@ -84,4 +105,21 @@ __all__ = [
     "cosmos_sysinfo",
     "cosmos_invoke",
     "cosmos_vision_invoke",
+    # Cosmos 3
+    "cosmos3_reason",
+    "cosmos3_caption",
+    "cosmos3_temporal",
+    "cosmos3_embodied",
+    "cosmos3_ground",
+    "cosmos3_plausibility",
+    "cosmos3_situation",
+    "cosmos3_action_cot",
+    "cosmos3_text2image",
+    "cosmos3_text2video",
+    "cosmos3_image2video",
+    "cosmos3_text2video_sound",
+    "cosmos3_forward_dynamics",
+    "cosmos3_inverse_dynamics",
+    "cosmos3_policy",
+    "cosmos3_serve",
 ]
