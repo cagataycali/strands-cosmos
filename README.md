@@ -11,7 +11,7 @@
 
 **NVIDIA Cosmos toolkit for [Strands Agents](https://strandsagents.com) — from VLM reasoning to world-model generation, edge deployment, and evaluation.**
 
-Provides Cosmos-Reason2 as a Strands model provider plus **21 tools** covering the entire NVIDIA Cosmos ecosystem: inference, video generation (Predict2.5), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation.
+Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3** omnimodal Reasoner & Generator) plus **37 tools** covering the entire NVIDIA Cosmos ecosystem: VLM reasoning, world-model generation (image/video/**audio**/**action**), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation. **Local compute, no NIM required.**
 
 ---
 
@@ -108,6 +108,69 @@ agent("Check the system, then analyze the video at /tmp/scene.mp4")
 |------|-----------|-----------|
 | Text inference | 7s | **1.4s** (46 tokens) |
 | Video caption | 7s | **2.2s** (short clip @ 4fps) |
+
+---
+
+## Cosmos 3 (Omnimodal World Models)
+
+**NEW:** First-class support for the [Cosmos 3](https://research.nvidia.com/labs/cosmos-lab/cosmos3/)
+omnimodal world-model family — **local compute, no NIM required**.
+
+### Model Providers
+
+```python
+from strands import Agent
+from strands_cosmos import Cosmos3ReasonerModel, Cosmos3GeneratorModel
+
+# Reasoner (text+vision -> text) via local vLLM. Start: just c3-serve-reason
+agent = Agent(model=Cosmos3ReasonerModel(base_url="http://localhost:8000/v1"))
+agent("Caption in detail: <video>scene.mp4</video>")
+
+# Generator (text/image -> image/video/sound) via in-proc Diffusers
+gen = Cosmos3GeneratorModel(model_id="nvidia/Cosmos3-Nano")
+gen.generate(mode="text2video-with-sound", prompt="A robot pours water.",
+             out_path="out.mp4", enable_sound=True)   # H264 + AAC stereo 48kHz
+```
+
+### Cosmos 3 Tools
+
+| Surface | Tools | Backend |
+|---------|-------|---------|
+| **Reasoner** | `cosmos3_reason`, `cosmos3_caption`, `cosmos3_temporal`, `cosmos3_embodied`, `cosmos3_ground`, `cosmos3_plausibility`, `cosmos3_situation`, `cosmos3_action_cot` | vLLM (`Cosmos3ReasonerForConditionalGeneration`) |
+| **Generator** | `cosmos3_text2image`, `cosmos3_text2video`, `cosmos3_image2video`, `cosmos3_text2video_sound` | Diffusers `Cosmos3OmniPipeline` (in-proc) |
+| **Action** | `cosmos3_forward_dynamics`, `cosmos3_inverse_dynamics`, `cosmos3_policy` | Cosmos Framework (torchrun) |
+| **Servers** | `cosmos3_serve` | start/stop/status |
+
+### Cosmos 3 Models
+
+| Model | Size | Capability |
+|-------|-----:|------------|
+| [Cosmos3-Nano](https://huggingface.co/nvidia/Cosmos3-Nano) | 16B | Omnimodal (reasoner + generator + action). Fits a single ~46GB GPU. |
+| [Cosmos3-Super](https://huggingface.co/nvidia/Cosmos3-Super) | 64B | Frontier-scale (multi-GPU / TP). |
+| [Cosmos3-Nano-Policy-DROID](https://huggingface.co/nvidia/Cosmos3-Nano-Policy-DROID) | 16B | VL robot policy (DROID). |
+
+### Setup (justfile)
+
+```bash
+just c3-doctor          # check GPU / CUDA / uv / venvs / disk
+just c3-setup-reason    # vllm==0.21.0 + vllm-cosmos3 (cu130 for CUDA-13 driver)
+just c3-serve-reason    # serve Cosmos3-Nano on :8000 (--max-model-len 32768)
+just c3-reason "Caption in detail." "" scene.mp4 caption
+
+just c3-setup-gen       # diffusers(main) + cosmos_guardrail
+just c3-gen text2video "A robot in a warehouse." "" out.mp4
+```
+
+> **Single-GPU note:** the reasoner (vLLM) and generator (Diffusers) each load a
+> 16B model and will not fit on one ~46GB GPU simultaneously — stop one before
+> running the other, or dedicate separate GPUs.
+
+### Showcase: Reason → Generate
+
+See **[`demo/cosmos3_showcase/`](demo/cosmos3_showcase/README.md)** for an end-to-end demo: Cosmos 3 reasons about a real construction-site video, then generates similar videos (incl. one with **synchronized audio**) from its own description — all local, no NIM. Reproduce with `python examples/09_cosmos3_showcase.py`.
+
+> **CUDA pairing:** match the torch backend to your driver — CUDA 13 → `cu130` +
+> `vllm==0.21.0`; CUDA 12.8 → `cu128` + `vllm==0.19.1`. (`just c3-doctor` reports this.)
 
 ---
 

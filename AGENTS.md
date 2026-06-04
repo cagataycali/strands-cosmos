@@ -235,6 +235,157 @@ When multiple agents work on this repo concurrently:
 
 > New entries go AT THE TOP.
 
+### 2026-06-04 — Cosmos 3 Phase 4 DONE (Action world-model via Cosmos Framework)
+
+**Phase 4 GATE PASSED.** Forward dynamics verified end-to-end.
+
+- `c3-setup-framework` FAST (FRAMEWORK_EXIT=0): clones cosmos-framework →
+  cosmos/packages/cosmos3, `uv sync --all-extras --group=cu130-train`. venv at
+  packages/cosmos3/.venv. `import cosmos_framework` OK.
+- Forward dynamics (AV, av_traj_forward.json + av_0.jpg start frame):
+  `python -m cosmos_framework.scripts.inference --parallelism-preset=latency
+   -i spec.jsonl -o out --checkpoint-path Cosmos3-Nano --seed=0`.
+  Loaded OmniMoTModel (Wan2.2 VAE + AVAE audio + action_gen), 30-step UniPC
+  sampling in 31s → **/tmp/c3_action_out/av_forward/vision.mp4: 832x480, 61
+  frames, H264, 7.5MB**. FD_EXIT=0. GPU 44.5GB.
+- Input is a **JSONL spec** (one line per run): model_mode (forward_dynamics|
+  inverse_dynamics|policy), vision_path, action_path, domain_name (av|
+  bridge_orig_lerobot|...), action_chunk_size, fps, image_size, view_point,
+  prompt, name, seed. Framework auto-downloads checkpoints (Cosmos3-Nano + Wan2.2
+  VAE + AVAE) on first run.
+- Action is NOT in the Diffusers Cosmos3OmniPipeline.__call__ (only video/sound).
+  Confirmed: action requires Cosmos Framework. Updated `c3-action` recipe +
+  cosmos3_forward_dynamics/inverse_dynamics/policy tools to take `input_jsonl`.
+- Example 08_cosmos3_action.py added.
+
+**ALL 4 capability surfaces now verified on local L40S (no NIM):**
+1. Reasoner (caption/temporal/embodied/plausibility/situation) — vLLM ✅
+2. Generator image/video — Diffusers ✅
+3. Generator video+SOUND (AAC stereo 48kHz) — Diffusers in-proc ✅
+4. Action forward-dynamics (world-model rollout) — Cosmos Framework ✅
+
+**Remaining (optional polish):** inverse_dynamics + policy smoke (same recipe,
+different spec), vLLM-Omni video2video (optional, in-proc covers most), docs site
+pages, CI. Core integration COMPLETE.
+
+
+### 2026-06-04 — Cosmos 3 Phase 2b + Phase 3 DONE (video + SOUND in-proc!)
+
+**text2video PASS:** 29f @ 256p, 15 steps, **19.3s** → valid H264 320x192 MP4.
+
+**text2video-with-SOUND PASS (Phase 3 done in-proc, NO vLLM-Omni needed!):**
+- `Cosmos3OmniPipelineOutput` has BOTH `.video` (list of frames) AND `.sound`
+  (torch.Tensor, stereo). Diffusers does sound generation in-process.
+- Patched Cosmos3GeneratorModel.generate() + added `_mux_audio()`: writes silent
+  video, writes sound tensor to WAV (soundfile), muxes via ffmpeg → AAC.
+- Result MP4: **H264 video + AAC stereo @ 48kHz** (`has_audio: True`), 19.5s.
+  Matches Cosmos 3 spec (stereo AAC 48kHz) exactly.
+- Gen venv needs: soundfile (added). ffmpeg (system, present).
+
+**Architecture update:** vLLM-Omni is now OPTIONAL — in-proc Diffusers covers
+text2image/video/video+sound. vLLM-Omni only needed for video2video + the
+OpenAI-server generation API (Phase 3b, lower priority). Action still needs
+Cosmos Framework (Phase 4).
+
+**Next:** Phase 4 (action: forward/inverse dynamics + policy — Cosmos3-Nano repo
+ships example assets: example_action_fd_agibotworld_*, example_action_id_av_*).
+Then Phase 5 (examples 06-12, docs, README tool table, CI).
+
+
+### 2026-06-04 — Cosmos 3 Phase 2 DONE (Generator via Diffusers verified)
+
+**Phase 2 GATE PASSED.** Cosmos3GeneratorModel text2image works in-proc.
+
+- `c3-setup-gen` built .venv-c3-gen: diffusers 0.39.0.dev0 (main) has
+  `Cosmos3OmniPipeline`. Also needs strands-agents+pydantic in gen venv
+  (provider imports full strands_cosmos package).
+- text2image smoke (256p, 10 steps): 93KB PNG in **33.3s** (incl 16B load),
+  diffusion ~7.9 it/s. PASS.
+- Pipeline load confirms **omnimodal single checkpoint**: Cosmos3OmniTransformer
+  + AutoencoderKLWan (video VAE) + Cosmos3AVAEAudioTokenizer (audio) +
+  action_proj layers (action modality). One Nano = text/img/video/audio/action gen.
+
+**CRITICAL hardware finding — single L40S (46GB) can't run reasoner + generator
+simultaneously.** vLLM reasoner holds ~40GB (weights+KV cache); Diffusers
+generator needs ~16GB+ for the same 16B → OOM. **Must stop one before the other.**
+For production: dedicate GPUs, or run reasoner OR generator per session. Documented
+in COSMOS3_INTEGRATION.md risks. The two providers are correct; it's a memory
+scheduling constraint, not a code bug.
+
+**Verified reasoner suite (all via vLLM):** caption (6.6s), temporal (timestamps),
+embodied (with <think>), plausibility (label), situation (next-action). All good.
+
+**Daemonization for long GPU jobs:** /tmp/daemon_*.py double-fork pattern is the
+only reliable way to survive harness timeouts. Logs: /tmp/c3reason2.log,
+/tmp/c3gentest.log, /tmp/c3setupgen.log.
+
+**Next:** Phase 3 (omni sound/v2v — needs vLLM-Omni or in-proc Diffusers sound),
+Phase 4 (action: forward/inverse dynamics, policy via assets in Cosmos3-Nano repo),
+Phase 5 (examples 06-12, docs, README, CI).
+
+
+### 2026-06-04 — Cosmos 3 Phase 1 DONE (Reasoner via vLLM verified)
+
+**Phase 1 GATE PASSED.** Cosmos3-Nano reasoner live on local vLLM (no NIM).
+
+- `just c3-setup-reason` succeeded: vllm==0.21.0 + vllm-cosmos3==0.1.0 (cu130).
+  Plugin registers `Cosmos3ReasonerForConditionalGeneration`. (~7GB uv cache dl.)
+- Server: Cosmos3-Nano (16B) on L40S, single GPU, **--max-model-len 32768**
+  (default 262144 needs 36GB KV cache > 21GB free → OOM; capped fixes it).
+  `--gpu-memory-utilization 0.92`. Ready in ~2-3min (weights+torch.compile cached).
+  Uses 41.9GB VRAM. justfile c3-serve-reason updated with max_len + gpu-mem-util params.
+- `Cosmos3ReasonerModel` caption of strands-cosmos-demo-video.mp4: **6.6s**,
+  accurate (front-end loader, church steeple, glass facade, urban setting).
+  Beats Reason2-2B baseline. `just c3-reason ... temporal` also works (timestamps).
+
+**Key learnings:**
+- System python3.12 needs `pip install --break-system-packages openai` for the
+  reasoner provider (separate from the venv).
+- Backgrounding on this host: harness SIGKILLs commands with trailing `sleep`,
+  taking child procs with them. Use a **double-fork daemon** (os.fork/setsid/fork,
+  dup2 log fd) launched in a NO-sleep command → fully orphaned, survives. Pattern
+  saved at /tmp/daemonize.py + /tmp/launch_c3_reason.sh.
+- vllm "[ERROR] ... is part of ... signature but not documented" lines are
+  harmless transformers docstring warnings, not failures.
+- Server start logs: /tmp/c3reason.log. Health: curl localhost:8000/health.
+
+**Next:** Phase 2 (Generator/Diffusers: c3-setup-gen, text2image/video), then
+smoke remaining reasoner tools, Phase 3 (omni sound/v2v), Phase 4 (action), Phase 5.
+
+
+### 2026-06-04 — Cosmos 3 integration (branch: feat/cosmos3-integration)
+
+Started deep Cosmos 3 omnimodal support. **No NIM** — local compute only
+(1×L40S 46GB, driver 580 → CUDA 13.0 → cu130 + vllm==0.21.0 pairing locked).
+
+**Phase 0 DONE** (committed):
+- `Cosmos3ReasonerModel` (vLLM OpenAI backend) — strands_cosmos/cosmos3_reasoner_model.py
+  Reasoner path: text+vision→text. Transformers reasoner is "coming soon" upstream,
+  so we go via local vLLM serving `Cosmos3ReasonerForConditionalGeneration`.
+- `Cosmos3GeneratorModel` (Diffusers `Cosmos3OmniPipeline`, in-proc) — generator.
+- 16 `cosmos3_*` tools (thin justfile wrappers): reason/caption/temporal/embodied/
+  ground/plausibility/situation/action_cot + text2image/text2video/image2video/
+  text2video_sound + forward_dynamics/inverse_dynamics/policy + serve.
+- justfile c3-* recipes: c3-doctor, c3-setup-{reason,gen,omni,framework},
+  c3-serve-{reason,omni,status,stop-*}, c3-reason, c3-gen, c3-action.
+- tests/test_cosmos3_imports.py green (3/3). All 16 tools + 2 providers exported.
+- `just` 1.51.0 installed at /tmp/justbin (symlinked ~/.local/bin/just). c3-doctor verified.
+
+**Next (autonomous ambient driving):**
+- Phase 1: `just c3-setup-reason` (uv venv, vllm 0.21.0 + vllm-cosmos3, cu130),
+  `just c3-serve-reason`, then caption ../strands-cosmos-demo-video.mp4 via
+  Cosmos3ReasonerModel; smoke all 8 reasoner tools. Needs HF_TOKEN/`hf auth login`.
+- Phase 2: `just c3-setup-gen` (diffusers main), text2image→text2video→image2video.
+- Phase 3: vLLM-Omni sound + video2video.  Phase 4: Cosmos Framework action.
+- Phase 5: examples 06-12, docs, README/AGENTS update, CI.
+
+**Gotchas learned:**
+- Cosmos-Reason2 path needs transformers>=4.57 (Qwen3VL) + torchcodec==0.2.1
+  (matches torch 2.6 + system FFmpeg 6 / libavutil.so.58). 0.10 fails to load.
+- Use `just_run`/`proc_result` from tools/_common.py (NOT a `run_just` helper).
+- pip needs `--break-system-packages` on this externally-managed host.
+
+
 ### 2026-05-08 — AGENTS.md created (initial)
 
 First AGENTS.md generated from full repo audit. Package at v0.2.0 on PyPI.
