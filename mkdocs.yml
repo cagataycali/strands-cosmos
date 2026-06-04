@@ -1,6 +1,6 @@
 site_name: Strands Cosmos
 site_url: https://cagataycali.github.io/strands-cosmos
-site_description: "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence."
+site_description: "NVIDIA Cosmos toolkit for Strands Agents - Cosmos-Reason2 VLM + Cosmos 3 omnimodal world models (reasoning, video/audio/action generation), edge deployment, and evaluation."
 repo_url: https://github.com/cagataycali/strands-cosmos
 repo_name: cagataycali/strands-cosmos
 extra_css:
@@ -13,6 +13,7 @@ nav:
   - Installation: getting-started/installation.md
   - Quickstart: getting-started/quickstart.md
 - Guide:
+  - Cosmos 3 (Omnimodal): guide/cosmos3.md
   - Video Understanding: guide/video-understanding.md
   - Image Reasoning: guide/image-reasoning.md
   - Chain-of-Thought: guide/chain-of-thought.md

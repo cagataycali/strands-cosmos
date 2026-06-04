@@ -54,9 +54,16 @@ NVIDIA Cosmos Reason VLM provider for [Strands Agents](https://strandsagents.com
 
 ## What is Strands Cosmos?
 
-Strands Cosmos is the **full-lifecycle NVIDIA Cosmos toolkit** for [Strands Agents](https://github.com/strands-agents/sdk-python). It provides Cosmos-Reason2 as a model provider plus **21 tools** covering the entire ecosystem: VLM reasoning, world-model generation (Predict2.5), video-to-video (Transfer2.5), data curation (Xenna), post-training, quantization, edge deployment, and evaluation.
+Strands Cosmos is the **full-lifecycle NVIDIA Cosmos toolkit** for [Strands Agents](https://github.com/strands-agents/sdk-python). It provides **4 model providers** — Cosmos-Reason2 VLM plus the new **Cosmos 3** omnimodal Reasoner & Generator — and **37 tools** covering the entire ecosystem: VLM reasoning, world-model generation (image/video/**audio**/**action**), video-to-video (Transfer2.5), data curation (Xenna), post-training, quantization, edge deployment, and evaluation. **Local compute, no NIM required.**
 
-**2 models · 21 tools · Video + Image + Text · Chain-of-Thought · Jetson-native · Full pipeline automation**
+**4 models · 37 tools · Video + Image + Audio + Action · Chain-of-Thought · Jetson-native · Full pipeline automation**
+
+!!! tip "NEW: Cosmos 3 omnimodal world models"
+    First-class support for [Cosmos 3](guide/cosmos3.md) — `Cosmos3ReasonerModel` (vLLM)
+    for video/image understanding and `Cosmos3GeneratorModel` (Diffusers) for
+    text→image/video and **video with synchronized audio**, plus action world-model
+    rollouts (forward/inverse dynamics, policy) via the Cosmos Framework. All local,
+    no NIM. → **[Cosmos 3 Guide](guide/cosmos3.md)**
 
 ```mermaid
 graph LR

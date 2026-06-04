@@ -11,7 +11,7 @@
 
 **NVIDIA Cosmos toolkit for [Strands Agents](https://strandsagents.com) — from VLM reasoning to world-model generation, edge deployment, and evaluation.**
 
-Provides Cosmos-Reason2 as a Strands model provider plus **21 tools** covering the entire NVIDIA Cosmos ecosystem: inference, video generation (Predict2.5), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation.
+Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3** omnimodal Reasoner & Generator) plus **37 tools** covering the entire NVIDIA Cosmos ecosystem: VLM reasoning, world-model generation (image/video/**audio**/**action**), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation. **Local compute, no NIM required.**
 
 ---
 
