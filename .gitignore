@@ -17,3 +17,4 @@ venv/
 site/
 *.bak
 strands_cosmos/_version.py
+strands_cosmos/justfile

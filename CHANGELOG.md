@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-04
+
+### Fixed
+
+- **All justfile-backed tools failed on `pip install`**: the `justfile` (which
+  every `cosmos_*` / `cosmos3_*` tool shells out to) was never packaged, so
+  `_find_justfile()` returned `None` in a pip install and tools errored with
+  exit 127. The justfile is now bundled into the wheel/sdist at
+  `strands_cosmos/justfile` (copied from the repo root at build time) and the
+  lookup resolves it. Verified from a clean wheel install. Added a regression test.
+
 ## [0.4.1] - 2026-06-04
 
 ### Fixed
@@ -146,7 +157,8 @@ and action. Runs on local compute (vLLM / Diffusers / Cosmos Framework).
 - Jetson CUBLAS compatibility fix (`strands-cosmos-fix-cublas`).
 - Dashcam safety-analysis demo.
 
-[Unreleased]: https://github.com/cagataycali/strands-cosmos/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/cagataycali/strands-cosmos/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/cagataycali/strands-cosmos/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/cagataycali/strands-cosmos/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/cagataycali/strands-cosmos/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/cagataycali/strands-cosmos/compare/v0.3.1...v0.3.2

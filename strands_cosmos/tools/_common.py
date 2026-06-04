@@ -76,9 +76,14 @@ def _find_justfile() -> Path | None:
         f = parent / "justfile"
         if f.is_file():
             return f
-    # Fall back to the package's own justfile
-    pkg_root = Path(__file__).resolve().parent.parent.parent
-    f = pkg_root / "justfile"
+    # Fall back to the bundled justfile shipped inside the package
+    # (strands_cosmos/justfile — copied from the repo root at build time).
+    pkg_dir = Path(__file__).resolve().parent.parent  # strands_cosmos/
+    f = pkg_dir / "justfile"
+    if f.is_file():
+        return f
+    # Editable/repo checkout: justfile at the repo root (parent of strands_cosmos/).
+    f = pkg_dir.parent / "justfile"
     return f if f.is_file() else None
 
 
