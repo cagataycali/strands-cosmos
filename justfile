@@ -1064,7 +1064,7 @@ c3-omni-docker-stop:
 
 # Video-to-video transfer: re-render an input video with a new prompt (keeps structure).
 # Requires the omni server running (c3-omni-docker). input/output are host paths.
-c3-v2v input prompt out="/tmp/omni-work/v2v_out.mp4" port=C3_OMNI_PORT steps="20" guidance="6.0" size="832x480" frames="29" fps="16" seed="0" negative="blurry, distorted, low quality":
+c3-v2v input prompt out="/tmp/omni-work/v2v_out.mp4" port=C3_OMNI_PORT steps="35" guidance="8.0" size="832x480" frames="29" fps="16" seed="0" negative="blurry, distorted, low quality" cond_frames="0" cond_keep="last":
     #!/usr/bin/env bash
     set -euo pipefail
     curl -sS -X POST "http://localhost:{{port}}/v1/videos/sync" \
@@ -1077,7 +1077,7 @@ c3-v2v input prompt out="/tmp/omni-work/v2v_out.mp4" port=C3_OMNI_PORT steps="20
       --form-string "guidance_scale={{guidance}}" \
       --form-string "flow_shift=10.0" \
       --form-string "seed={{seed}}" \
-      --form-string 'extra_params={"use_resolution_template":false,"use_duration_template":false,"guardrails":true}' \
+      --form-string "extra_params={\"use_resolution_template\":false,\"use_duration_template\":false,\"guardrails\":true,\"condition_frame_indexes_vision\":[{{cond_frames}}],\"condition_video_keep\":\"{{cond_keep}}\"}" \
       -F "input_reference=@{{input}}" \
       -o "{{out}}" -w "HTTP %{http_code} bytes=%{size_download}\n"
     echo "video2video -> {{out}}"

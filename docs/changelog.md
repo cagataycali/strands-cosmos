@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-06-04
+
+### Changed
+
+- **`cosmos3_video2video` now exposes the conditioning controls** that actually
+  drive how much the prompt transforms the video:
+  `condition_frames` (latent frame indexes kept clean) and `condition_keep`
+  ("first"/"last"). New restyle-friendly defaults (`condition_frames="0"`,
+  `condition_keep="last"`, `guidance=8`, `steps=35`) so a real transform
+  (day→night, recolor, change the scene) is the easy path. With the old
+  defaults the prompt barely changed the video (it reconstructed the input).
+- `c3-v2v` justfile recipe gains matching `cond_frames` / `cond_keep` params.
+- Added `demo/cosmos3_v2v/` showcase (recolor / rain / crowd / night) + tuning guide.
+
 ## [0.4.3] - 2026-06-04
 
 ### Added — native video-to-video transfer

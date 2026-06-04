@@ -98,3 +98,20 @@ def test_cosmos3_video2video_tool():
     assert hasattr(cosmos3_video2video, "tool_spec") or callable(cosmos3_video2video)
     import strands_cosmos as sc
     assert "cosmos3_video2video" in sc.__all__
+
+
+def test_cosmos3_video2video_conditioning_params():
+    import inspect
+    from strands_cosmos import cosmos3_video2video
+    # @tool wraps the function; introspect the underlying signature via tool_spec
+    spec = getattr(cosmos3_video2video, "tool_spec", None)
+    props = {}
+    if spec:
+        schema = spec.get("inputSchema", {})
+        props = (schema.get("json") or schema).get("properties", {}) if isinstance(schema, dict) else {}
+    # Either the decorated spec exposes them, or the raw function does.
+    names = set(props) if props else set(inspect.signature(
+        getattr(cosmos3_video2video, "__wrapped__", cosmos3_video2video)).parameters)
+    assert "condition_frames" in names
+    assert "condition_keep" in names
+    assert "guidance" in names
