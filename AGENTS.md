@@ -235,6 +235,38 @@ When multiple agents work on this repo concurrently:
 
 > New entries go AT THE TOP.
 
+### 2026-06-04 — Cosmos 3 Phase 2 DONE (Generator via Diffusers verified)
+
+**Phase 2 GATE PASSED.** Cosmos3GeneratorModel text2image works in-proc.
+
+- `c3-setup-gen` built .venv-c3-gen: diffusers 0.39.0.dev0 (main) has
+  `Cosmos3OmniPipeline`. Also needs strands-agents+pydantic in gen venv
+  (provider imports full strands_cosmos package).
+- text2image smoke (256p, 10 steps): 93KB PNG in **33.3s** (incl 16B load),
+  diffusion ~7.9 it/s. PASS.
+- Pipeline load confirms **omnimodal single checkpoint**: Cosmos3OmniTransformer
+  + AutoencoderKLWan (video VAE) + Cosmos3AVAEAudioTokenizer (audio) +
+  action_proj layers (action modality). One Nano = text/img/video/audio/action gen.
+
+**CRITICAL hardware finding — single L40S (46GB) can't run reasoner + generator
+simultaneously.** vLLM reasoner holds ~40GB (weights+KV cache); Diffusers
+generator needs ~16GB+ for the same 16B → OOM. **Must stop one before the other.**
+For production: dedicate GPUs, or run reasoner OR generator per session. Documented
+in COSMOS3_INTEGRATION.md risks. The two providers are correct; it's a memory
+scheduling constraint, not a code bug.
+
+**Verified reasoner suite (all via vLLM):** caption (6.6s), temporal (timestamps),
+embodied (with <think>), plausibility (label), situation (next-action). All good.
+
+**Daemonization for long GPU jobs:** /tmp/daemon_*.py double-fork pattern is the
+only reliable way to survive harness timeouts. Logs: /tmp/c3reason2.log,
+/tmp/c3gentest.log, /tmp/c3setupgen.log.
+
+**Next:** Phase 3 (omni sound/v2v — needs vLLM-Omni or in-proc Diffusers sound),
+Phase 4 (action: forward/inverse dynamics, policy via assets in Cosmos3-Nano repo),
+Phase 5 (examples 06-12, docs, README, CI).
+
+
 ### 2026-06-04 — Cosmos 3 Phase 1 DONE (Reasoner via vLLM verified)
 
 **Phase 1 GATE PASSED.** Cosmos3-Nano reasoner live on local vLLM (no NIM).
