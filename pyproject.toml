@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "strands-cosmos"
-version = "0.2.0"
+version = "0.3.0"
 description = "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -55,6 +55,12 @@ dependencies = [
 vllm = [
     "vllm>=0.11.0",
     "openai",
+]
+# Cosmos 3 reasoner client (talks to a local vLLM server). The heavier
+# generator/action backends (vllm-cosmos3, diffusers, Cosmos Framework) are
+# installed into dedicated uv venvs via the justfile `c3-setup-*` recipes.
+cosmos3 = [
+    "openai>=1.0.0",
 ]
 jetson = [
     # Jetson users: torch is pre-installed via NVIDIA JetPack / pip index

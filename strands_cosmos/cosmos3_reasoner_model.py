@@ -48,9 +48,9 @@ from strands.models._validation import (
     warn_on_tool_choice_not_supported,
 )
 from strands.models.model import Model
-from strands.types.content import ContentBlock, Messages
+from strands.types.content import Messages
 from strands.types.streaming import StreamEvent
-from strands.types.tools import ToolChoice, ToolResult, ToolSpec, ToolUse
+from strands.types.tools import ToolChoice, ToolSpec
 from typing_extensions import TypedDict, Unpack, override
 
 logger = logging.getLogger(__name__)

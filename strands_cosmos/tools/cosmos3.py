@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from strands import tool
 
-from ._common import just_run, proc_result, err
+from ._common import err, just_run, proc_result
 
 # Long timeouts: video gen + model load can take many minutes.
 _GEN_TIMEOUT = 60 * 60        # 1h for generation

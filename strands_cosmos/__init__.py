@@ -1,14 +1,18 @@
 """Strands Cosmos - NVIDIA Cosmos ecosystem provider for Strands Agents.
 
-Full-lifecycle support: Reason2 VLM, Predict2.5, Transfer2.5, Xenna curation,
-quantization, edge deployment, and evaluation.
+Full-lifecycle support across Cosmos 3 (omnimodal) and Cosmos-Reason2 (VLM):
+reasoning, world-model generation (image/video/audio/action), Predict2.5,
+Transfer2.5, Xenna curation, quantization, edge deployment, and evaluation.
 
 Model Providers (use as Agent model):
-  - CosmosModel: Text-only Reason2 inference via HF Transformers
-  - CosmosVisionModel: Video + image + text via HF Transformers
+  - Cosmos3ReasonerModel: Cosmos 3 omnimodal reasoning (text+vision -> text) via vLLM
+  - Cosmos3GeneratorModel: Cosmos 3 generation (-> image/video/sound) via Diffusers
+  - CosmosVisionModel: Reason2 VLM (video + image + text) via HF Transformers
+  - CosmosModel: Reason2 text-only via HF Transformers
 
 Tools (use inside any Agent):
-  - 20 tools covering the full Cosmos pipeline via justfile recipes
+  - 37 tools covering the full Cosmos pipeline via justfile recipes
+    (incl. 16 cosmos3_* tools: reason / generate / action / serve)
   - See strands_cosmos.tools for the complete list
 """
 

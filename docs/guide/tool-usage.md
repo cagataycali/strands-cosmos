@@ -11,7 +11,7 @@ Use Cosmos tools inside **any** Strands agent — Bedrock, Anthropic, OpenAI, Ol
 
 ## Overview
 
-strands-cosmos provides **21 tools** that let any agent orchestrate the full NVIDIA Cosmos pipeline:
+strands-cosmos provides **37 tools** (21 Cosmos-Reason2/Predict/Transfer + 16 Cosmos 3) that let any agent orchestrate the full NVIDIA Cosmos pipeline:
 
 | Category | Tools |
 |----------|-------|
