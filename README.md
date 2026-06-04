@@ -15,13 +15,135 @@ Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3*
 
 ---
 
-## Demo
+**NVIDIA Cosmos toolkit for [Strands Agents](https://strandsagents.com) — omnimodal world-model reasoning *and* generation, on local compute.**
 
-> **Dashcam safety analysis with Chain-of-Thought reasoning on Jetson AGX Thor**
+Cosmos models become first-class **Strands model providers** — give your agent eyes
+that understand physics, and hands that can generate video, audio, and robot actions.
+Plus **37 tools** spanning the full Cosmos pipeline (inference, generation, curation,
+post-training, quantization, edge deployment, evaluation). **No NIM required.**
 
-<a href="https://github.com/cagataycali/strands-cosmos/releases/download/v0.1.1/strands-cosmos-demo.mp4">
-  <img src="demo/strands-cosmos-demo.gif" alt="Strands Cosmos Demo" width="100%">
-</a>
+| Family | Providers | Best for |
+|--------|-----------|----------|
+| **Cosmos 3** (latest, omnimodal) | `Cosmos3ReasonerModel`, `Cosmos3GeneratorModel` | Video/image/audio/action **understanding + generation** |
+| **Cosmos-Reason2** (VLM) | `CosmosVisionModel`, `CosmosModel` | Lightweight edge VLM (Jetson Thor/Orin) |
+
+---
+
+## 🌌 Cosmos 3 — Omnimodal World Models
+
+[Cosmos 3](https://research.nvidia.com/labs/cosmos-lab/cosmos3/) is NVIDIA's newest model
+family: a unified **Mixture-of-Transformers** that jointly **understands and generates**
+text, images, video, audio, and action. strands-cosmos exposes both runtime surfaces:
+
+- **Reasoner** (`Cosmos3ReasonerModel`, vLLM) — text + vision → text
+- **Generator** (`Cosmos3GeneratorModel`, Diffusers) — text/image → image/video/**audio**/**action**
+
+### See it end-to-end: Reason → Generate
+
+Cosmos 3 watches a real construction-site clip, **describes it**, then **generates new
+videos** (including one with synchronized audio) from its own description — all on a
+single local GPU.
+
+<table>
+<tr>
+<th>① Input video</th>
+<th>② Cosmos 3 understands it</th>
+</tr>
+<tr>
+<td><img src="demo/cosmos3_showcase/00_input.gif" width="200" alt="input"/></td>
+<td>
+
+> *"Two construction workers wearing yellow safety vests and helmets are walking away from the camera on a dirt path within a bustling construction site. The ground is covered in loose soil, with visible tire tracks crisscrossing the surface. In the background, a large yellow front-end loader moves slowly across the site, its bucket raised slightly as it navigates the terrain. Behind the loader, partially obscured by rebar and concrete slabs, an excavator operates near a foundation area. The scene is framed by urban buildings in the distance, including a distinctive church-like structure with a tall spire and modern glass-fronted buildings. The overall atmosphere suggests active progress on a significant infrastructure project under clear daylight conditions."*
+
+— `Cosmos3ReasonerModel` (caption in 5.2s)
+
+</td>
+</tr>
+</table>
+
+The reasoner distills its own understanding into a generation prompt:
+
+> **"Two construction workers in yellow safety vests and helmets walk across a dusty site, gesturing toward a yellow front loader and distant excavator as they converse."**
+
+Then `Cosmos3GeneratorModel` generates similar videos from that prompt (832×480, 49f):
+
+<table>
+<tr>
+<th>text → video</th>
+<th>text → video + 🔊 sound</th>
+<th>image → video</th>
+</tr>
+<tr>
+<td><img src="demo/cosmos3_showcase/01_text2video.gif" width="240" alt="text2video"/></td>
+<td><img src="demo/cosmos3_showcase/02_text2video_sound.gif" width="240" alt="text2video+sound"/></td>
+<td><img src="demo/cosmos3_showcase/03_image2video.gif" width="240" alt="image2video"/></td>
+</tr>
+<tr>
+<td align="center"><sub>55.5s</sub></td>
+<td align="center"><sub>43.2s · AAC stereo 48kHz</sub></td>
+<td align="center"><sub>42.1s · from a real frame</sub></td>
+</tr>
+</table>
+
+→ Full demo + MP4s + reasoning: **[`demo/cosmos3_showcase/`](demo/cosmos3_showcase/README.md)** · reproduce with `python examples/09_cosmos3_showcase.py`
+
+### Quick start (Cosmos 3)
+
+```python
+from strands import Agent
+from strands_cosmos import Cosmos3ReasonerModel, Cosmos3GeneratorModel
+
+# Reasoner — text + vision -> text (local vLLM server; start with `just c3-serve-reason`)
+agent = Agent(model=Cosmos3ReasonerModel(base_url="http://localhost:8000/v1"))
+agent("Caption in detail: <video>scene.mp4</video>")
+agent("List the notable events with timestamps: <video>scene.mp4</video>")
+
+# Generator — text/image -> image/video/sound (in-process Diffusers, no server)
+gen = Cosmos3GeneratorModel(model_id="nvidia/Cosmos3-Nano")
+gen.generate(mode="text2video",            prompt="A robot navigates a warehouse.", out_path="vid.mp4")
+gen.generate(mode="text2video-with-sound", prompt="A robot pours water.", out_path="av.mp4", enable_sound=True)
+gen.generate(mode="image2video",           prompt="It moves forward.", image="frame.jpg", out_path="i2v.mp4")
+```
+
+### Cosmos 3 capabilities
+
+| Surface | Tools | Backend |
+|---------|-------|---------|
+| **Reasoner** | `cosmos3_reason`, `cosmos3_caption`, `cosmos3_temporal`, `cosmos3_embodied`, `cosmos3_ground`, `cosmos3_plausibility`, `cosmos3_situation`, `cosmos3_action_cot` | vLLM |
+| **Generator** | `cosmos3_text2image`, `cosmos3_text2video`, `cosmos3_image2video`, `cosmos3_text2video_sound` | Diffusers `Cosmos3OmniPipeline` (in-proc) |
+| **Action / World-Model** | `cosmos3_forward_dynamics`, `cosmos3_inverse_dynamics`, `cosmos3_policy` | Cosmos Framework (torchrun) |
+| **Servers** | `cosmos3_serve` | start / stop / status |
+
+### Cosmos 3 models
+
+| Model | Size | Capability |
+|-------|-----:|------------|
+| [Cosmos3-Nano](https://huggingface.co/nvidia/Cosmos3-Nano) | 16B | Omnimodal (reasoner + generator + action) — fits a single ~46GB GPU |
+| [Cosmos3-Super](https://huggingface.co/nvidia/Cosmos3-Super) | 64B | Frontier-scale (multi-GPU / tensor-parallel) |
+| [Cosmos3-Nano-Policy-DROID](https://huggingface.co/nvidia/Cosmos3-Nano-Policy-DROID) | 16B | VL robot policy (DROID) |
+
+### Setup (justfile)
+
+```bash
+just c3-doctor          # check GPU / CUDA / uv / venvs / disk + recommended CUDA pairing
+just c3-setup-reason    # Reasoner env: vllm + vllm-cosmos3
+just c3-serve-reason    # serve Cosmos3-Nano on :8000
+just c3-reason "Caption in detail." "" scene.mp4 caption
+
+just c3-setup-gen       # Generator env: diffusers(main) + cosmos_guardrail
+just c3-gen text2video "A robot in a warehouse." "" out.mp4
+
+just c3-setup-framework # Action env: Cosmos Framework
+just c3-action spec.jsonl /tmp/out      # forward/inverse dynamics, policy
+```
+
+> **CUDA pairing:** match the torch backend to your driver — CUDA 13 → `cu130` + `vllm==0.21.0`;
+> CUDA 12.8 → `cu128` + `vllm==0.19.1`. `just c3-doctor` reports your driver's recommendation.
+>
+> **Single-GPU note:** the reasoner (vLLM) and generator (Diffusers) each load a 16B model and
+> won't fit on one ~46GB GPU together — stop one before running the other, or use separate GPUs.
+
+📖 Full guide: **[docs/guide/cosmos3.md](https://cagataycali.github.io/strands-cosmos/guide/cosmos3/)**
 
 ---
 
@@ -48,7 +170,16 @@ strands-cosmos-fix-cublas   # Fix CUBLAS for Jetson GPU architecture
 
 ---
 
-## Quick Start
+## Cosmos-Reason2 (Lightweight Edge VLM)
+
+For edge/Jetson deployments, the Cosmos-Reason2 VLM runs as a Strands model provider
+with a tiny footprint — verified on Jetson AGX Thor with Chain-of-Thought reasoning.
+
+> **Dashcam safety analysis with Chain-of-Thought reasoning on Jetson AGX Thor**
+
+<a href="https://github.com/cagataycali/strands-cosmos/releases/download/v0.1.1/strands-cosmos-demo.mp4">
+  <img src="demo/strands-cosmos-demo.gif" alt="Strands Cosmos Demo" width="100%">
+</a>
 
 ```python
 from strands import Agent
@@ -57,19 +188,21 @@ from strands_cosmos import CosmosVisionModel
 model = CosmosVisionModel(model_id="nvidia/Cosmos-Reason2-2B")
 agent = Agent(model=model)
 
-# Video understanding
-agent("Caption in detail: <video>dashcam.mp4</video>")
-
-# Image reasoning
-agent("<image>robot_view.jpg</image> What should the robot do next?")
-
-# Text-only physics reasoning
-agent("What happens when a ball rolls off a table?")
+agent("Caption in detail: <video>dashcam.mp4</video>")          # video understanding
+agent("<image>robot_view.jpg</image> What should the robot do next?")  # image reasoning
+agent("What happens when a ball rolls off a table?")            # text-only physics
 ```
+
+| Model | GPU Memory | Use Case |
+|-------|-----------|----------|
+| [Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | 24GB | Edge deployment (Jetson Thor/Orin) |
+| [Cosmos-Reason2-8B](https://huggingface.co/nvidia/Cosmos-Reason2-8B) | 32GB | Cloud/desktop high-accuracy |
+
+**Performance (Jetson AGX Thor, Reason2-2B):** text inference **1.4s** (46 tokens) · video caption **2.2s** (short clip @ 4fps), 7s load.
 
 ---
 
-## Tools
+## Pipeline Tools (Cosmos-Reason2 / Predict / Transfer)
 
 Use any tool inside a Strands Agent for full Cosmos pipeline automation:
 
@@ -95,129 +228,23 @@ agent("Check the system, then analyze the video at /tmp/scene.mp4")
 
 ---
 
-## Models
-
-| Model | GPU Memory | Use Case |
-|-------|-----------|----------|
-| [Cosmos-Reason2-2B](https://huggingface.co/nvidia/Cosmos-Reason2-2B) | 24GB | Edge deployment (Jetson Thor/Orin) |
-| [Cosmos-Reason2-8B](https://huggingface.co/nvidia/Cosmos-Reason2-8B) | 32GB | Cloud/desktop high-accuracy |
-
-### Performance (Jetson AGX Thor, Reason2-2B)
-
-| Task | Load Time | Generation |
-|------|-----------|-----------|
-| Text inference | 7s | **1.4s** (46 tokens) |
-| Video caption | 7s | **2.2s** (short clip @ 4fps) |
-
----
-
-## Cosmos 3 (Omnimodal World Models)
-
-**NEW:** First-class support for the [Cosmos 3](https://research.nvidia.com/labs/cosmos-lab/cosmos3/)
-omnimodal world-model family — **local compute, no NIM required**.
-
-### Model Providers
-
-```python
-from strands import Agent
-from strands_cosmos import Cosmos3ReasonerModel, Cosmos3GeneratorModel
-
-# Reasoner (text+vision -> text) via local vLLM. Start: just c3-serve-reason
-agent = Agent(model=Cosmos3ReasonerModel(base_url="http://localhost:8000/v1"))
-agent("Caption in detail: <video>scene.mp4</video>")
-
-# Generator (text/image -> image/video/sound) via in-proc Diffusers
-gen = Cosmos3GeneratorModel(model_id="nvidia/Cosmos3-Nano")
-gen.generate(mode="text2video-with-sound", prompt="A robot pours water.",
-             out_path="out.mp4", enable_sound=True)   # H264 + AAC stereo 48kHz
-```
-
-### Cosmos 3 Tools
-
-| Surface | Tools | Backend |
-|---------|-------|---------|
-| **Reasoner** | `cosmos3_reason`, `cosmos3_caption`, `cosmos3_temporal`, `cosmos3_embodied`, `cosmos3_ground`, `cosmos3_plausibility`, `cosmos3_situation`, `cosmos3_action_cot` | vLLM (`Cosmos3ReasonerForConditionalGeneration`) |
-| **Generator** | `cosmos3_text2image`, `cosmos3_text2video`, `cosmos3_image2video`, `cosmos3_text2video_sound` | Diffusers `Cosmos3OmniPipeline` (in-proc) |
-| **Action** | `cosmos3_forward_dynamics`, `cosmos3_inverse_dynamics`, `cosmos3_policy` | Cosmos Framework (torchrun) |
-| **Servers** | `cosmos3_serve` | start/stop/status |
-
-### Cosmos 3 Models
-
-| Model | Size | Capability |
-|-------|-----:|------------|
-| [Cosmos3-Nano](https://huggingface.co/nvidia/Cosmos3-Nano) | 16B | Omnimodal (reasoner + generator + action). Fits a single ~46GB GPU. |
-| [Cosmos3-Super](https://huggingface.co/nvidia/Cosmos3-Super) | 64B | Frontier-scale (multi-GPU / TP). |
-| [Cosmos3-Nano-Policy-DROID](https://huggingface.co/nvidia/Cosmos3-Nano-Policy-DROID) | 16B | VL robot policy (DROID). |
-
-### Setup (justfile)
-
-```bash
-just c3-doctor          # check GPU / CUDA / uv / venvs / disk
-just c3-setup-reason    # vllm==0.21.0 + vllm-cosmos3 (cu130 for CUDA-13 driver)
-just c3-serve-reason    # serve Cosmos3-Nano on :8000 (--max-model-len 32768)
-just c3-reason "Caption in detail." "" scene.mp4 caption
-
-just c3-setup-gen       # diffusers(main) + cosmos_guardrail
-just c3-gen text2video "A robot in a warehouse." "" out.mp4
-```
-
-> **Single-GPU note:** the reasoner (vLLM) and generator (Diffusers) each load a
-> 16B model and will not fit on one ~46GB GPU simultaneously — stop one before
-> running the other, or dedicate separate GPUs.
-
-### Showcase: Reason → Generate
-
-See **[`demo/cosmos3_showcase/`](demo/cosmos3_showcase/README.md)** for an end-to-end demo: Cosmos 3 reasons about a real construction-site video, then generates similar videos (incl. one with **synchronized audio**) from its own description — all local, no NIM. Reproduce with `python examples/09_cosmos3_showcase.py`.
-
-> **CUDA pairing:** match the torch backend to your driver — CUDA 13 → `cu130` +
-> `vllm==0.21.0`; CUDA 12.8 → `cu128` + `vllm==0.19.1`. (`just c3-doctor` reports this.)
-
----
-
 ## Architecture
 
 ```
 strands_cosmos/
-├── cosmos_model.py              # CosmosModel (text-only Strands Model)
-├── cosmos_vision_model.py       # CosmosVisionModel (video+image+text)
+├── cosmos3_reasoner_model.py    # Cosmos3ReasonerModel (vLLM, text+vision -> text)
+├── cosmos3_generator_model.py   # Cosmos3GeneratorModel (Diffusers, -> image/video/sound)
+├── cosmos_vision_model.py       # CosmosVisionModel (Reason2 VLM: video+image+text)
+├── cosmos_model.py              # CosmosModel (Reason2 text-only)
 ├── fix_cublas.py                # Jetson CUBLAS compatibility fix
-├── tools/                       # 21 tools (full Cosmos pipeline)
-│   ├── inference.py             # TRT server inference
-│   ├── reason_hf.py            # HF Transformers direct inference
-│   ├── serve.py                # Server lifecycle management
-│   ├── predict_generate.py     # Predict2.5 world model
-│   ├── transfer_generate.py    # Transfer2.5 ControlNet
-│   ├── model_download.py       # HF model download
-│   ├── quantize.py             # FP8 quantization
-│   ├── export_onnx.py          # ONNX export
-│   ├── build_engine.py         # TRT engine build
-│   ├── post_train.py           # Post-training (SFT/LoRA)
-│   ├── distill.py              # Knowledge distillation
-│   ├── curate.py               # Xenna data curation
-│   ├── evaluate.py             # Benchmark evaluation
-│   ├── rtp.py                  # GStreamer RTP capture
-│   ├── nats_pub.py             # NATS publish
-│   ├── video_utils.py          # ffprobe + frame extraction
-│   ├── image_read.py           # Base64 image read
-│   └── sysinfo.py              # System diagnostics
-└── justfile                     # Developer workflow automation
-```
-
----
-
-## Justfile (Developer Workflow)
-
-```bash
-just setup          # Clone all 6 Cosmos ecosystem repos
-just setup-full     # Full setup: system deps + Python + repos + diagnostics
-just doctor         # Check repos, tools, GPU, platform compatibility
-just install-trt-edge-llm  # Build TensorRT-Edge-LLM from source (Jetson)
-
-# Run pipelines
-just predict-generate config.json
-just transfer-generate config.json
-just evaluate metrics.json
-just serve-start
+├── tools/
+│   ├── cosmos3.py               # 16 Cosmos 3 tools (reason/generate/action/serve)
+│   ├── inference.py · reason_hf.py · serve.py        # Reason2 VLM
+│   ├── predict_generate.py · transfer_generate.py    # Predict2.5 / Transfer2.5
+│   ├── model_download.py · quantize.py · export_onnx.py · build_engine.py
+│   ├── post_train.py · distill.py · curate.py · evaluate.py
+│   └── rtp.py · nats_pub.py · video_utils.py · image_read.py · sysinfo.py
+└── justfile                     # Developer workflow + c3-* recipes
 ```
 
 ---
@@ -225,14 +252,17 @@ just serve-start
 ## Configuration
 
 ```python
-model = CosmosVisionModel(
+# Cosmos 3 Reasoner
+Cosmos3ReasonerModel(base_url="http://localhost:8000/v1", reasoning=True, max_tokens=4096)
+
+# Cosmos 3 Generator
+Cosmos3GeneratorModel(model_id="nvidia/Cosmos3-Nano", guardrails=True)
+
+# Cosmos-Reason2 VLM
+CosmosVisionModel(
     model_id="nvidia/Cosmos-Reason2-8B",
-    device_map="auto",
-    torch_dtype="auto",
     reasoning=True,           # Chain-of-thought <think>...</think>
-    fps=4,                    # Video sampling rate
-    min_vision_tokens=256,
-    max_vision_tokens=8192,
+    fps=4,
     params={"max_tokens": 4096, "temperature": 0.6},
 )
 ```
@@ -243,10 +273,9 @@ model = CosmosVisionModel(
 
 | Platform | GPU | Status |
 |----------|-----|--------|
-| Jetson AGX Thor | NVIDIA Thor 132GB | ✅ (with CUBLAS fix) |
-| Jetson Orin | 32/64GB | ✅ (may need CUBLAS fix) |
-| Desktop | A100 / H100 / RTX 4090 | ✅ |
-| Cloud | Any CUDA 12+ GPU | ✅ |
+| Desktop / Cloud | NVIDIA L40S / A100 / H100 / RTX 4090 | ✅ Cosmos 3 + Reason2 |
+| Jetson AGX Thor | NVIDIA Thor 132GB | ✅ Reason2 (with CUBLAS fix) |
+| Jetson Orin | 32/64GB | ✅ Reason2 (may need CUBLAS fix) |
 
 ---
 
@@ -257,19 +286,24 @@ model = CosmosVisionModel(
 strands-cosmos-fix-cublas    # Replaces torch's bundled CUBLAS with JetPack system CUBLAS
 ```
 
-### `StopIteration` in `get_rope_index` during video
-Already handled — `strands-cosmos` pins `transformers<5.3.0`. If you see this, run:
+### Cosmos 3 reasoner OOM on a single GPU
+The default sequence length (262K) needs a huge KV cache. Cap it: `just c3-serve-reason`
+sets `--max-model-len 32768`. Stop the generator before serving the reasoner (and vice versa).
+
+### `StopIteration` in `get_rope_index` during video (Reason2)
+Already handled — `strands-cosmos` pins a compatible transformers range. If you see it:
 ```bash
 pip install "transformers>=4.57.0,<5.3.0"
 ```
 
 ### TRT tools return exit 127
-Expected on workstations — those tools run on Jetson or in TRT Docker. Run `just doctor` to see what works on your machine.
+Expected on workstations — those tools run on Jetson or in TRT Docker. Run `just doctor`.
 
 ---
 
 ## Resources
 
+- [Cosmos 3](https://research.nvidia.com/labs/cosmos-lab/cosmos3/) — Latest omnimodal world models
 - [Cosmos Cookbook](https://github.com/nvidia-cosmos/cosmos-cookbook) — Official recipes
 - [Cosmos-Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) — VLM source
 - [Strands Agents](https://strandsagents.com) — Agent framework
