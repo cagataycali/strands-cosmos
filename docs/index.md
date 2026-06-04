@@ -6,7 +6,7 @@
 
 Cosmos models become first-class **Strands model providers**: give your agent eyes that
 understand physics, and hands that can generate video, audio, and robot actions — plus
-**37 tools** spanning the full Cosmos pipeline.
+**44 tools** spanning the full Cosmos pipeline.
 
 | Family | Providers | Best for |
 |--------|-----------|----------|
@@ -244,7 +244,7 @@ agent("What happens when you push a ball off the edge of a table?")
     from strands import Agent
     from strands_cosmos import cosmos_reason_hf, video_probe, cosmos_sysinfo
 
-    # 37 tools available — use any combination
+    # 44 tools available — use any combination
     agent = Agent(tools=[cosmos_reason_hf, video_probe, cosmos_sysinfo])
     agent("Check GPU status, probe the video, then describe what you see in /tmp/scene.mp4")
     ```
@@ -299,7 +299,7 @@ Benchmarks with Cosmos-Reason2-2B on 132GB unified memory:
 
 [:material-file-tree: **Architecture** →](architecture.md)
 
-[:material-code-tags: **API Reference (37 tools)** →](api-reference.md)
+[:material-code-tags: **API Reference (44 tools)** →](api-reference.md)
 
 </div>
 

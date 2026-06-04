@@ -61,3 +61,21 @@ def test_cosmos3_reasoner_task_prompts():
         assert k in TASK_PROMPTS
     assert SAMPLING_THINK["temperature"] == 0.6
     assert SAMPLING_NO_THINK["temperature"] == 0.7
+
+
+def test_cosmos3_training_tools_import():
+    from strands_cosmos import (
+        cosmos3_train, cosmos3_train_recipes, cosmos3_train_show,
+        cosmos3_train_convert, cosmos3_train_convert_vlm,
+        cosmos3_train_prep_dataset, cosmos3_train_export,
+    )
+    for t in [cosmos3_train, cosmos3_train_convert, cosmos3_train_export]:
+        assert hasattr(t, "tool_spec") or callable(t)
+
+
+def test_cosmos3_training_tools_in_all():
+    import strands_cosmos as sc
+    for n in ["cosmos3_train", "cosmos3_train_convert", "cosmos3_train_convert_vlm",
+              "cosmos3_train_prep_dataset", "cosmos3_train_show",
+              "cosmos3_train_recipes", "cosmos3_train_export"]:
+        assert n in sc.__all__, f"{n} missing from __all__"

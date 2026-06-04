@@ -77,6 +77,18 @@ from strands_cosmos.tools.cosmos3 import (
     cosmos3_serve,
 )
 
+
+# ── Cosmos 3 post-training (SFT) ──────────────────────────
+from strands_cosmos.tools.cosmos3_train import (
+    cosmos3_train_recipes,
+    cosmos3_train_show,
+    cosmos3_train_convert,
+    cosmos3_train_convert_vlm,
+    cosmos3_train_prep_dataset,
+    cosmos3_train,
+    cosmos3_train_export,
+)
+
 __all__ = [
     # Reason2 VLM
     "cosmos_inference",
@@ -126,4 +138,12 @@ __all__ = [
     "cosmos3_inverse_dynamics",
     "cosmos3_policy",
     "cosmos3_serve",
+    # Cosmos 3 training
+    "cosmos3_train_recipes",
+    "cosmos3_train_show",
+    "cosmos3_train_convert",
+    "cosmos3_train_convert_vlm",
+    "cosmos3_train_prep_dataset",
+    "cosmos3_train",
+    "cosmos3_train_export",
 ]
