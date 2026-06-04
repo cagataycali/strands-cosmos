@@ -236,20 +236,80 @@ class Cosmos3GeneratorModel(Model):
         result = pipe(**params)
 
         os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)
+
+        # Pull video frames + optional sound from the omni pipeline output.
+        video_frames = getattr(result, "video", None)
+        if video_frames is None and hasattr(result, "images"):
+            video_frames = result.images
+        sound = getattr(result, "sound", None)
+
+        has_audio = False
         if mode == "text2image":
-            img = result.images[0] if hasattr(result, "images") else result.video[0]
+            img = video_frames[0] if isinstance(video_frames, list) else result.images[0]
             if not out_path.lower().endswith((".png", ".jpg", ".jpeg")):
                 out_path = os.path.splitext(out_path)[0] + ".png"
             img.save(out_path)
         else:
-            export_to_video(result.video, out_path, fps=params["fps"], macro_block_size=1)
+            if enable_sound and sound is not None:
+                # Write silent video to temp, mux stereo audio via ffmpeg.
+                tmp_video = out_path + ".video.mp4"
+                export_to_video(video_frames, tmp_video, fps=params["fps"], macro_block_size=1)
+                has_audio = self._mux_audio(tmp_video, sound, out_path, sample_rate=48000)
+                try:
+                    os.remove(tmp_video)
+                except OSError:
+                    pass
+                if not has_audio:
+                    # Fallback: video only
+                    export_to_video(video_frames, out_path, fps=params["fps"], macro_block_size=1)
+            else:
+                export_to_video(video_frames, out_path, fps=params["fps"], macro_block_size=1)
 
         return {
             "status": "success",
             "mode": mode,
             "out_path": out_path,
+            "has_audio": has_audio,
             "params": {k: v for k, v in params.items() if k not in ("generator", "image")},
         }
+
+    @staticmethod
+    def _mux_audio(video_path: str, sound, out_path: str, sample_rate: int = 48000) -> bool:
+        """Mux a stereo audio tensor into a video via ffmpeg. Returns True on success."""
+        import subprocess
+        import shutil
+        import numpy as np
+        import soundfile as sf
+
+        if not shutil.which("ffmpeg"):
+            logger.warning("ffmpeg not found; cannot mux audio")
+            return False
+        try:
+            arr = sound.detach().to("cpu", dtype=__import__("torch").float32).numpy()
+            # Expect shape (channels, samples) or (samples, channels); normalize to (samples, channels)
+            if arr.ndim == 1:
+                arr = arr[:, None]
+            elif arr.shape[0] in (1, 2) and arr.shape[0] < arr.shape[1]:
+                arr = arr.T
+            wav_path = out_path + ".wav"
+            sf.write(wav_path, arr, sample_rate)
+            cmd = [
+                "ffmpeg", "-y", "-i", video_path, "-i", wav_path,
+                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+                "-shortest", out_path,
+            ]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            try:
+                os.remove(wav_path)
+            except OSError:
+                pass
+            if r.returncode != 0:
+                logger.warning("ffmpeg mux failed: %s", r.stderr[-300:])
+                return False
+            return True
+        except Exception as e:
+            logger.warning("audio mux error: %s", e)
+            return False
 
     @override
     async def stream(

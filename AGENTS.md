@@ -235,6 +235,29 @@ When multiple agents work on this repo concurrently:
 
 > New entries go AT THE TOP.
 
+### 2026-06-04 — Cosmos 3 Phase 2b + Phase 3 DONE (video + SOUND in-proc!)
+
+**text2video PASS:** 29f @ 256p, 15 steps, **19.3s** → valid H264 320x192 MP4.
+
+**text2video-with-SOUND PASS (Phase 3 done in-proc, NO vLLM-Omni needed!):**
+- `Cosmos3OmniPipelineOutput` has BOTH `.video` (list of frames) AND `.sound`
+  (torch.Tensor, stereo). Diffusers does sound generation in-process.
+- Patched Cosmos3GeneratorModel.generate() + added `_mux_audio()`: writes silent
+  video, writes sound tensor to WAV (soundfile), muxes via ffmpeg → AAC.
+- Result MP4: **H264 video + AAC stereo @ 48kHz** (`has_audio: True`), 19.5s.
+  Matches Cosmos 3 spec (stereo AAC 48kHz) exactly.
+- Gen venv needs: soundfile (added). ffmpeg (system, present).
+
+**Architecture update:** vLLM-Omni is now OPTIONAL — in-proc Diffusers covers
+text2image/video/video+sound. vLLM-Omni only needed for video2video + the
+OpenAI-server generation API (Phase 3b, lower priority). Action still needs
+Cosmos Framework (Phase 4).
+
+**Next:** Phase 4 (action: forward/inverse dynamics + policy — Cosmos3-Nano repo
+ships example assets: example_action_fd_agibotworld_*, example_action_id_av_*).
+Then Phase 5 (examples 06-12, docs, README tool table, CI).
+
+
 ### 2026-06-04 — Cosmos 3 Phase 2 DONE (Generator via Diffusers verified)
 
 **Phase 2 GATE PASSED.** Cosmos3GeneratorModel text2image works in-proc.
