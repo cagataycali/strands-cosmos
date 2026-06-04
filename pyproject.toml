@@ -49,6 +49,9 @@ dependencies = [
     "pillow>=10.0.0",
     "pyyaml>=6.0",
     "av>=16.0.0",
+    # transformers 5.x video processor decodes with torchcodec and otherwise
+    # falls back to torchvision, whose io.read_video was removed in >=0.27.
+    "torchcodec; python_version >= \"3.10\"",
 ]
 
 [project.optional-dependencies]
