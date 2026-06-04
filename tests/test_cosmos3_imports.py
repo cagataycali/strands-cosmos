@@ -35,3 +35,29 @@ def test_cosmos3_tools_import():
     # All decorated tools expose a tool spec
     for t in [cosmos3_reason, cosmos3_caption, cosmos3_serve]:
         assert hasattr(t, "tool_spec") or callable(t)
+
+
+def test_cosmos3_generator_modes_and_resolution():
+    from strands_cosmos.cosmos3_generator_model import (
+        Cosmos3GeneratorModel, RES_TIERS, GEN_DEFAULTS,
+    )
+    m = Cosmos3GeneratorModel()
+    cfg = m.get_config()
+    assert cfg["model_id"] == "nvidia/Cosmos3-Nano"
+    assert cfg["guardrails"] is True
+    # resolution tiers present
+    assert RES_TIERS["256"] == (320, 192)
+    assert RES_TIERS["480"] == (832, 480)
+    assert RES_TIERS["720"] == (1280, 720)
+    # has the audio mux helper
+    assert hasattr(m, "_mux_audio")
+    assert GEN_DEFAULTS["fps"] == 24
+
+
+def test_cosmos3_reasoner_task_prompts():
+    from strands_cosmos.cosmos3_reasoner_model import TASK_PROMPTS, SAMPLING_THINK, SAMPLING_NO_THINK
+    for k in ["caption", "temporal", "embodied", "plausibility", "situation",
+              "grounding", "describe", "action_cot", "driving"]:
+        assert k in TASK_PROMPTS
+    assert SAMPLING_THINK["temperature"] == 0.6
+    assert SAMPLING_NO_THINK["temperature"] == 0.7
