@@ -1036,3 +1036,48 @@ c3-train-export run_dir out="":
       || .venv/bin/python -m cosmos_framework.scripts.convert_model_to_diffusers \
       --checkpoint-path "$ckpt" -o "$out"
     echo "HF export -> $out"
+
+
+# ── Cosmos 3 Generator — vLLM-Omni Docker (full modalities incl. video2video) ──
+C3_OMNI_IMAGE  := env_var_or_default("C3_OMNI_IMAGE", "vllm/vllm-omni:cosmos3")
+C3_OMNI_WORK   := env_var_or_default("C3_OMNI_WORK", "/tmp/omni-work")
+
+# Start the vLLM-Omni server in Docker (all modalities: t2i/t2v/i2v/v2v/sound/action).
+c3-omni-docker model=C3_MODEL port=C3_OMNI_PORT:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{C3_OMNI_WORK}}"
+    docker rm -f c3omni 2>/dev/null || true
+    docker run -d --name c3omni --gpus all \
+      -v "$HOME/.cache/huggingface:/root/.cache/huggingface" \
+      -v "{{C3_OMNI_WORK}}:/workspace" \
+      -p {{port}}:{{port}} --ipc=host \
+      "{{C3_OMNI_IMAGE}}" \
+      vllm serve "{{model}}" --omni \
+      --model-class-name Cosmos3OmniDiffusersPipeline \
+      --allowed-local-media-path / --port {{port}} --init-timeout 1800
+    echo "🚀 Omni (docker) starting on :{{port}} — poll: curl -s localhost:{{port}}/health"
+    echo "   logs: docker logs -f c3omni"
+
+c3-omni-docker-stop:
+    -docker rm -f c3omni 2>/dev/null && echo "stopped c3omni" || echo "no c3omni container"
+
+# Video-to-video transfer: re-render an input video with a new prompt (keeps structure).
+# Requires the omni server running (c3-omni-docker). input/output are host paths.
+c3-v2v input prompt out="/tmp/omni-work/v2v_out.mp4" port=C3_OMNI_PORT steps="20" guidance="6.0" size="832x480" frames="29" fps="16" seed="0" negative="blurry, distorted, low quality":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    curl -sS -X POST "http://localhost:{{port}}/v1/videos/sync" \
+      --form-string "prompt={{prompt}}" \
+      --form-string "negative_prompt={{negative}}" \
+      --form-string "size={{size}}" \
+      --form-string "num_frames={{frames}}" \
+      --form-string "fps={{fps}}" \
+      --form-string "num_inference_steps={{steps}}" \
+      --form-string "guidance_scale={{guidance}}" \
+      --form-string "flow_shift=10.0" \
+      --form-string "seed={{seed}}" \
+      --form-string 'extra_params={"use_resolution_template":false,"use_duration_template":false,"guardrails":true}' \
+      -F "input_reference=@{{input}}" \
+      -o "{{out}}" -w "HTTP %{http_code} bytes=%{size_download}\n"
+    echo "video2video -> {{out}}"

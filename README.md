@@ -11,7 +11,7 @@
 
 **NVIDIA Cosmos toolkit for [Strands Agents](https://strandsagents.com) — from VLM reasoning to world-model generation, edge deployment, and evaluation.**
 
-Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3** omnimodal Reasoner & Generator) plus **44 tools** covering the entire NVIDIA Cosmos ecosystem: VLM reasoning, world-model generation (image/video/**audio**/**action**), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation. **Local compute.**
+Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3** omnimodal Reasoner & Generator) plus **45 tools** covering the entire NVIDIA Cosmos ecosystem: VLM reasoning, world-model generation (image/video/**audio**/**action**), video-to-video (Transfer2.5), data curation (Xenna), post-training, distillation, quantization, edge deployment, and evaluation. **Local compute.**
 
 ---
 
@@ -19,7 +19,7 @@ Provides **4 Strands model providers** (Cosmos-Reason2 VLM + the new **Cosmos 3*
 
 Cosmos models become first-class **Strands model providers** — give your agent eyes
 that understand physics, and hands that can generate video, audio, and robot actions.
-Plus **44 tools** spanning the full Cosmos pipeline (inference, generation, curation,
+Plus **45 tools** spanning the full Cosmos pipeline (inference, generation, curation,
 post-training, quantization, edge deployment, evaluation).
 
 | Family | Providers | Best for |
@@ -111,6 +111,7 @@ gen.generate(mode="image2video",           prompt="It moves forward.", image="fr
 |---------|-------|---------|
 | **Reasoner** | `cosmos3_reason`, `cosmos3_caption`, `cosmos3_temporal`, `cosmos3_embodied`, `cosmos3_ground`, `cosmos3_plausibility`, `cosmos3_situation`, `cosmos3_action_cot` | vLLM |
 | **Generator** | `cosmos3_text2image`, `cosmos3_text2video`, `cosmos3_image2video`, `cosmos3_text2video_sound` | Diffusers `Cosmos3OmniPipeline` (in-proc) |
+| **Video-to-video** | `cosmos3_video2video` (transfer: day→night, recolor, restyle) | vLLM-Omni Docker (`vllm/vllm-omni:cosmos3`) |
 | **Action / World-Model** | `cosmos3_forward_dynamics`, `cosmos3_inverse_dynamics`, `cosmos3_policy` | Cosmos Framework (torchrun) |
 | **Training (SFT)** | `cosmos3_train`, `cosmos3_train_convert`, `cosmos3_train_show`, `cosmos3_train_export`, … | Cosmos Framework (torchrun) |
 | **Servers** | `cosmos3_serve` | start / stop / status |
