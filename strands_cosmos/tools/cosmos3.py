@@ -178,52 +178,75 @@ def cosmos3_video2video(
     prompt: str,
     out: str = "/tmp/c3_v2v.mp4",
     port: int = 8001,
-    steps: int = 20,
-    guidance: float = 6.0,
+    steps: int = 35,
+    guidance: float = 8.0,
     size: str = "832x480",
     frames: int = 29,
     fps: int = 16,
     seed: int = 0,
     negative: str = "blurry, distorted, low quality",
     guardrails: bool = True,
+    condition_frames: str = "0",
+    condition_keep: str = "last",
 ) -> dict:
     """Cosmos 3 video-to-video: re-render an input video with a new prompt.
 
-    Structure-preserving transfer (e.g. day->night, recolor, restyle) via the
-    vLLM-Omni server's /v1/videos/sync endpoint. Start the server first with
-    `just c3-omni-docker` (Docker image vllm/vllm-omni:cosmos3 — the only build
-    with all modalities incl. video2video).
+    Structure-preserving transfer (day->night, recolor, restyle, change the scene)
+    via the vLLM-Omni server's /v1/videos/sync endpoint. Start the server first
+    with `just c3-omni-docker` (Docker image vllm/vllm-omni:cosmos3 — the only
+    build with all modalities incl. video2video).
+
+    How much the prompt changes the video is controlled by the conditioning:
+    fewer/earlier conditioning frames + higher guidance = a stronger transform.
 
     Args:
         video: Path to the input video (local file).
-        prompt: Target description (the transformation to apply).
+        prompt: Target description (the transformation to apply). Be emphatic and
+            pair with a `negative` prompt for strong restyles (e.g. day->night).
         out: Output MP4 path.
         port: Omni server port (default 8001).
-        steps: Diffusion steps.
-        guidance: CFG scale.
+        steps: Diffusion steps (35 recommended for a clean restyle).
+        guidance: CFG scale. 6 = subtle/structure-faithful; 8-12 = strong restyle.
         size: Output resolution "WxH".
         frames: Frame count.
         fps: Frames per second.
         seed: Reproducibility seed.
-        negative: Negative prompt.
+        negative: Negative prompt (helps push away the original look).
         guardrails: Enable Cosmos 3 safety guardrails.
+        condition_frames: Latent frame indexes kept as clean conditioning, as a
+            comma-separated string. Default "0" (anchor only the first latent ->
+            strongest transform). The model default is "0,1" (more faithful, weaker
+            change). More indexes => closer to the original video.
+        condition_keep: Which end of the clip the conditioning frames come from:
+            "first" or "last" (default "last").
     """
     import json as _json
     import os as _os
 
     try:
         import requests
-    except ImportError as e:
+    except ImportError:
         return err("requests required for cosmos3_video2video: pip install requests")
 
     path = _os.path.expanduser(video)
     if not _os.path.exists(path):
         return err("input video not found: " + path)
 
+    if condition_keep not in ("first", "last"):
+        return err("condition_keep must be 'first' or 'last'")
+    try:
+        cond_idx = [int(x.strip()) for x in str(condition_frames).split(",") if x.strip() != ""]
+        if not cond_idx:
+            raise ValueError
+    except ValueError:
+        return err("condition_frames must be comma-separated non-negative ints, e.g. '0' or '0,1'")
+
     extra = {
         "use_resolution_template": False,
         "use_duration_template": False,
         "guardrails": guardrails,
+        "condition_frame_indexes_vision": cond_idx,
+        "condition_video_keep": condition_keep,
     }
     data = {
         "prompt": prompt,
@@ -250,8 +273,12 @@ def cosmos3_video2video(
         _os.makedirs(_os.path.dirname(_os.path.abspath(out)) or ".", exist_ok=True)
         with open(out, "wb") as g:
             g.write(resp.content)
-        return ok(f"cosmos3 video2video -> {out} ({len(resp.content)} bytes)",
-                  data={"out": out, "bytes": len(resp.content)})
+        return ok(
+            f"cosmos3 video2video -> {out} ({len(resp.content)} bytes) "
+            f"[guidance={guidance}, condition_frames={cond_idx}, keep={condition_keep}]",
+            data={"out": out, "bytes": len(resp.content),
+                  "condition_frame_indexes_vision": cond_idx, "condition_video_keep": condition_keep},
+        )
     except Exception as e:
         return err("video2video request failed: " + str(e))
 
