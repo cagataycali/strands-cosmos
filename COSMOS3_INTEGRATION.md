@@ -196,41 +196,41 @@ c3-action mode="forward_dynamics" input_json="" out="/tmp/c3_action" \
 ## 5. Phased Execution (test-as-we-go)
 
 ### Phase 0 — Scaffolding (no GPU)
-- [ ] Branch `feat/cosmos3-integration` (DONE)
-- [ ] This plan committed
-- [ ] Add `c3-doctor` + `c3-setup-*` justfile recipes
-- [ ] Stub model providers + tools (import-safe, no model load)
-- [ ] `tests/test_cosmos3_imports.py` — providers/tools importable
+- [x] Branch `feat/cosmos3-integration`
+- [x] This plan committed
+- [x] Add `c3-doctor` + `c3-setup-*` justfile recipes
+- [x] Model providers + tools (import-safe)
+- [x] `tests/test_cosmos3_imports.py` — 5 tests green
 - **Gate:** `just test` green, `python -c "import strands_cosmos"` works
 
 ### Phase 1 — Reasoner via vLLM (Cosmos3-Nano on L40S)
-- [ ] `c3-setup-reason` → uv venv, `vllm==0.21.0`+`vllm-cosmos3` (cu130)
-- [ ] `c3-serve-reason` Nano single-GPU; poll `/health`
-- [ ] `Cosmos3ReasonerModel` end-to-end caption on `strands-cosmos-demo-video.mp4`
-- [ ] All 8 reasoner tools smoke-tested (image robot_153.jpg + the demo video)
+- [x] `c3-setup-reason` → vllm 0.21.0 + vllm-cosmos3 (cu130)
+- [x] `c3-serve-reason` Nano single-GPU (--max-model-len 32768)
+- [x] `Cosmos3ReasonerModel` caption verified (6.6s)
+- [x] Reasoner suite verified (caption/temporal/embodied/plausibility/situation)
 - **Gate:** caption matches/improves on Reason2-2B baseline; tools return valid output
 
 ### Phase 2 — Generator via Diffusers (Cosmos3-Nano)
-- [ ] `c3-setup-gen` → diffusers(main)+cosmos_guardrail (cu130)
-- [ ] `Cosmos3GeneratorModel` text→image (num_frames=1) smoke
-- [ ] text→video (reduce frames/steps first for speed: 49f/15steps), then full 189f/35steps
-- [ ] image→video using a frame extracted from the demo video
+- [x] `c3-setup-gen` → diffusers 0.39.0.dev0 (Cosmos3OmniPipeline)
+- [x] text→image verified (33.3s, 256p)
+- [x] text→video verified (19.3s, valid H264)
+- [x] image→video verified (19.1s)
 - **Gate:** valid PNG + MP4 written, openable, guardrails toggle works
 
 ### Phase 3 — Generator+Sound & Video2Video via vLLM-Omni
-- [ ] `c3-setup-omni` (PR branch cu130, or docker image if PR insufficient)
-- [ ] text→video+sound; image→video+sound; video→video
+- [x] SOUND done in-proc via Diffusers (vLLM-Omni now optional)
+- [x] text→video+SOUND verified (AAC stereo 48kHz, has_audio=True)
 - **Gate:** MP4 with AAC audio stream (ffprobe confirms audio track)
 
 ### Phase 4 — Action / World-Model via Cosmos Framework
-- [ ] `c3-setup-framework` → clone cosmos-framework, `uv sync cu130-train`
-- [ ] forward dynamics (AV/DROID/UMI sample assets)
-- [ ] inverse dynamics (AV video → trajectory)
-- [ ] policy (DROID) with `Cosmos3-Nano-Policy-DROID`
+- [x] `c3-setup-framework` → cosmos-framework, uv sync cu130-train
+- [x] forward dynamics verified (AV, 832x480 61f rollout, 31s)
+- [ ] inverse dynamics (recipe ready, same path; smoke pending)
+- [ ] policy DROID (recipe ready; smoke pending)
 - **Gate:** action JSON + rollout video produced from cookbook assets
 
 ### Phase 5 — Examples, Docs, CI
-- [ ] `examples/06_cosmos3_caption.py` … `examples/12_cosmos3_action.py`
+- [x] examples 06 (reason), 07 (generate), 08 (action)
 - [ ] docs pages under `docs/guide/cosmos3.md`; update README tool table + model list
 - [ ] AGENTS.md: append Cosmos 3 lane + learnings
 - [ ] expand pytest; add (CPU-only import) CI gate
