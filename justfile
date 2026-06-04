@@ -888,16 +888,21 @@ c3-serve-stop-omni:
     [ -f "{{C3_OMNI_PID}}" ] && kill "$(cat {{C3_OMNI_PID}})" 2>/dev/null && rm -f "{{C3_OMNI_PID}}" && echo "stopped" || echo "no omni server pid"
 
 # ── Action / World-Model (Cosmos Framework, torchrun) ──────────────────────
-c3-action mode="forward_dynamics" input_json="" out="/tmp/c3_action" checkpoint="Cosmos3-Nano" seed="0":
+# input_jsonl: a JSONL spec, one line per run, with keys:
+#   model_mode (forward_dynamics|inverse_dynamics|policy), name, vision_path,
+#   action_path (FD/policy), domain_name (av|bridge_orig_lerobot|...),
+#   action_chunk_size, fps, image_size, view_point, prompt, seed.
+# See cosmos cookbooks/cosmos3/generator/action for sample specs & assets.
+c3-action input_jsonl out="/tmp/c3_action" checkpoint="Cosmos3-Nano" seed="0" preset="latency":
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{C3_FRAMEWORK_REPO}}"
-    COSMOS_TRAINING=false CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} \
+    COSMOS_TRAINING=false CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}" \
     MASTER_ADDR=127.0.0.1 MASTER_PORT=29501 RANK=0 WORLD_SIZE=1 LOCAL_RANK=0 \
     .venv/bin/python -m cosmos_framework.scripts.inference \
-      --parallelism-preset=latency \
-      -i "{{input_json}}" \
+      --parallelism-preset={{preset}} \
+      -i "{{input_jsonl}}" \
       -o "{{out}}" \
       --checkpoint-path "{{checkpoint}}" \
-      --seed={{seed}} --benchmark
-    echo "✅ action ({{mode}}) output -> {{out}}"
+      --seed={{seed}}
+    echo "action output -> {{out}}  (per-run: <out>/<name>/vision.mp4)"

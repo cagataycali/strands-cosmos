@@ -235,6 +235,40 @@ When multiple agents work on this repo concurrently:
 
 > New entries go AT THE TOP.
 
+### 2026-06-04 — Cosmos 3 Phase 4 DONE (Action world-model via Cosmos Framework)
+
+**Phase 4 GATE PASSED.** Forward dynamics verified end-to-end.
+
+- `c3-setup-framework` FAST (FRAMEWORK_EXIT=0): clones cosmos-framework →
+  cosmos/packages/cosmos3, `uv sync --all-extras --group=cu130-train`. venv at
+  packages/cosmos3/.venv. `import cosmos_framework` OK.
+- Forward dynamics (AV, av_traj_forward.json + av_0.jpg start frame):
+  `python -m cosmos_framework.scripts.inference --parallelism-preset=latency
+   -i spec.jsonl -o out --checkpoint-path Cosmos3-Nano --seed=0`.
+  Loaded OmniMoTModel (Wan2.2 VAE + AVAE audio + action_gen), 30-step UniPC
+  sampling in 31s → **/tmp/c3_action_out/av_forward/vision.mp4: 832x480, 61
+  frames, H264, 7.5MB**. FD_EXIT=0. GPU 44.5GB.
+- Input is a **JSONL spec** (one line per run): model_mode (forward_dynamics|
+  inverse_dynamics|policy), vision_path, action_path, domain_name (av|
+  bridge_orig_lerobot|...), action_chunk_size, fps, image_size, view_point,
+  prompt, name, seed. Framework auto-downloads checkpoints (Cosmos3-Nano + Wan2.2
+  VAE + AVAE) on first run.
+- Action is NOT in the Diffusers Cosmos3OmniPipeline.__call__ (only video/sound).
+  Confirmed: action requires Cosmos Framework. Updated `c3-action` recipe +
+  cosmos3_forward_dynamics/inverse_dynamics/policy tools to take `input_jsonl`.
+- Example 08_cosmos3_action.py added.
+
+**ALL 4 capability surfaces now verified on local L40S (no NIM):**
+1. Reasoner (caption/temporal/embodied/plausibility/situation) — vLLM ✅
+2. Generator image/video — Diffusers ✅
+3. Generator video+SOUND (AAC stereo 48kHz) — Diffusers in-proc ✅
+4. Action forward-dynamics (world-model rollout) — Cosmos Framework ✅
+
+**Remaining (optional polish):** inverse_dynamics + policy smoke (same recipe,
+different spec), vLLM-Omni video2video (optional, in-proc covers most), docs site
+pages, CI. Core integration COMPLETE.
+
+
 ### 2026-06-04 — Cosmos 3 Phase 2b + Phase 3 DONE (video + SOUND in-proc!)
 
 **text2video PASS:** 29f @ 256p, 15 steps, **19.3s** → valid H264 320x192 MP4.

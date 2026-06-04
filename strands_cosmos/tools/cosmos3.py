@@ -173,30 +173,58 @@ def cosmos3_text2video_sound(prompt: str, out: str = "/tmp/c3_t2v_sound.mp4",
 
 
 # ----- Action / World-Model -----------------------------------------------
+# All action tools take a JSONL spec (one line per run). The spec's `model_mode`
+# field selects forward_dynamics / inverse_dynamics / policy. These thin wrappers
+# call `just c3-action <input_jsonl>` (Cosmos Framework via torchrun). Sample
+# specs + assets live in the cosmos repo cookbooks/cosmos3/generator/action.
 @tool
-def cosmos3_forward_dynamics(input_json: str, out: str = "/tmp/c3_fd",
+def cosmos3_forward_dynamics(input_jsonl: str, out: str = "/tmp/c3_fd",
                              checkpoint: str = "Cosmos3-Nano", seed: int = 0) -> dict:
-    """Forward dynamics: start image + action chunk -> future video (Cosmos Framework)."""
-    proc = just_run("c3-action", "forward_dynamics", input_json, out, checkpoint,
-                    str(seed), timeout_s=_ACTION_TIMEOUT)
+    """Forward dynamics: start image + action chunk -> future video (Cosmos Framework).
+
+    Args:
+        input_jsonl: JSONL spec with model_mode="forward_dynamics", vision_path,
+            action_path, domain_name, action_chunk_size, fps, image_size, name.
+        out: output dir (writes <out>/<name>/vision.mp4).
+        checkpoint: Cosmos 3 checkpoint name.
+        seed: reproducibility seed.
+    """
+    proc = just_run("c3-action", input_jsonl, out, checkpoint, str(seed),
+                    timeout_s=_ACTION_TIMEOUT)
     return proc_result(proc, "cosmos3 forward_dynamics -> " + out, "c3 fd failed")
 
 
 @tool
-def cosmos3_inverse_dynamics(input_json: str, out: str = "/tmp/c3_id",
+def cosmos3_inverse_dynamics(input_jsonl: str, out: str = "/tmp/c3_id",
                              checkpoint: str = "Cosmos3-Nano", seed: int = 0) -> dict:
-    """Inverse dynamics: video + instruction -> predicted action chunk (Cosmos Framework)."""
-    proc = just_run("c3-action", "inverse_dynamics", input_json, out, checkpoint,
-                    str(seed), timeout_s=_ACTION_TIMEOUT)
+    """Inverse dynamics: video + instruction -> predicted action chunk (Cosmos Framework).
+
+    Args:
+        input_jsonl: JSONL spec with model_mode="inverse_dynamics", vision_path
+            (input video), domain_name, name.
+        out: output dir.
+        checkpoint: Cosmos 3 checkpoint name.
+        seed: reproducibility seed.
+    """
+    proc = just_run("c3-action", input_jsonl, out, checkpoint, str(seed),
+                    timeout_s=_ACTION_TIMEOUT)
     return proc_result(proc, "cosmos3 inverse_dynamics -> " + out, "c3 id failed")
 
 
 @tool
-def cosmos3_policy(input_json: str, out: str = "/tmp/c3_policy",
+def cosmos3_policy(input_jsonl: str, out: str = "/tmp/c3_policy",
                   checkpoint: str = "Cosmos3-Nano-Policy-DROID", seed: int = 0) -> dict:
-    """Action policy: image + instruction -> action chunk + rollout video (Cosmos Framework)."""
-    proc = just_run("c3-action", "policy", input_json, out, checkpoint,
-                    str(seed), timeout_s=_ACTION_TIMEOUT)
+    """Action policy: image + instruction -> action chunk + rollout video (Cosmos Framework).
+
+    Args:
+        input_jsonl: JSONL spec with model_mode="policy", vision_path, domain_name
+            (e.g. bridge_orig_lerobot), prompt (instruction), name.
+        out: output dir.
+        checkpoint: Cosmos 3 policy checkpoint (default Cosmos3-Nano-Policy-DROID).
+        seed: reproducibility seed.
+    """
+    proc = just_run("c3-action", input_jsonl, out, checkpoint, str(seed),
+                    timeout_s=_ACTION_TIMEOUT)
     return proc_result(proc, "cosmos3 policy -> " + out, "c3 policy failed")
 
 
