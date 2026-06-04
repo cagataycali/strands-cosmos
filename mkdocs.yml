@@ -28,6 +28,7 @@ nav:
   - Tool Usage: examples/tool-usage.md
 - Architecture: architecture.md
 - API Reference: api-reference.md
+- Changelog: changelog.md
 theme:
   name: material
   logo: strands-cosmos-logo.svg

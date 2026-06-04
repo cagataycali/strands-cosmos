@@ -303,6 +303,7 @@ Expected on workstations — those tools run on Jetson or in TRT Docker. Run `ju
 
 ## Resources
 
+- [Changelog](CHANGELOG.md) — Release history
 - [Cosmos 3](https://research.nvidia.com/labs/cosmos-lab/cosmos3/) — Latest omnimodal world models
 - [Cosmos Cookbook](https://github.com/nvidia-cosmos/cosmos-cookbook) — Official recipes
 - [Cosmos-Reason2](https://github.com/nvidia-cosmos/cosmos-reason2) — VLM source
