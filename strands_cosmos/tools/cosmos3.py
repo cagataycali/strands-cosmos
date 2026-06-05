@@ -132,7 +132,7 @@ def cosmos3_action_cot(
 # ----- Generator ----------------------------------------------------------
 @tool
 def cosmos3_text2image(prompt: str, out: str = "/tmp/c3_image.png", steps: int = 35,
-                       guidance: float = 6.0, res: str = "720", seed: int = 0) -> dict:
+                       guidance: float = 6.0, res: str = "480", seed: int = 0) -> dict:
     """Cosmos 3 Generator: text -> image (PNG) via Diffusers."""
     proc = just_run("c3-gen", "text2image", prompt, "", out, "1", "24", str(steps),
                     str(guidance), res, "false", str(seed), timeout_s=_GEN_TIMEOUT)
@@ -142,7 +142,7 @@ def cosmos3_text2image(prompt: str, out: str = "/tmp/c3_image.png", steps: int =
 @tool
 def cosmos3_text2video(prompt: str, out: str = "/tmp/c3_t2v.mp4", frames: int = 189,
                        fps: int = 24, steps: int = 35, guidance: float = 6.0,
-                       res: str = "720", seed: int = 0) -> dict:
+                       res: str = "480", seed: int = 0) -> dict:
     """Cosmos 3 Generator: text -> video (MP4) via Diffusers."""
     proc = just_run("c3-gen", "text2video", prompt, "", out, str(frames), str(fps),
                     str(steps), str(guidance), res, "false", str(seed),
@@ -153,7 +153,7 @@ def cosmos3_text2video(prompt: str, out: str = "/tmp/c3_t2v.mp4", frames: int = 
 @tool
 def cosmos3_image2video(prompt: str, image: str, out: str = "/tmp/c3_i2v.mp4",
                         frames: int = 189, fps: int = 24, steps: int = 35,
-                        guidance: float = 6.0, res: str = "720", seed: int = 0) -> dict:
+                        guidance: float = 6.0, res: str = "480", seed: int = 0) -> dict:
     """Cosmos 3 Generator: image + text -> video (MP4) via Diffusers."""
     proc = just_run("c3-gen", "image2video", prompt, image, out, str(frames), str(fps),
                     str(steps), str(guidance), res, "false", str(seed),
@@ -164,7 +164,7 @@ def cosmos3_image2video(prompt: str, image: str, out: str = "/tmp/c3_i2v.mp4",
 @tool
 def cosmos3_text2video_sound(prompt: str, out: str = "/tmp/c3_t2v_sound.mp4",
                              frames: int = 189, fps: int = 24, steps: int = 35,
-                             guidance: float = 6.0, res: str = "720", seed: int = 0) -> dict:
+                             guidance: float = 6.0, res: str = "480", seed: int = 0) -> dict:
     """Cosmos 3 Generator: text -> video + synchronized audio (MP4+AAC)."""
     proc = just_run("c3-gen", "text2video-with-sound", prompt, "", out, str(frames),
                     str(fps), str(steps), str(guidance), res, "true", str(seed),

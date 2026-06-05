@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-05
+
+### Added — full upstream Cosmos 3 parity (generator prompt-upsampling, batch captioning, VideoPhy2 eval, sound modes)
+
+- **`cosmos3_upsample_prompt` tool** + `c3-upsample` recipe: expand a short scene
+  description into a dense, structured generator prompt using the canonical v4.2
+  upsampler template and Cosmos 3 sampling defaults (max_tokens=20000,
+  temperature=0.7, top_p=0.8, top_k=20, presence=1.5, seed=3407). Verified live
+  against a Cosmos3-Nano reasoner. Tasks: t2v / t2i / i2v.
+- **`cosmos3_caption_batch` tool** + `c3-caption-batch` recipe: batch video
+  captioning via `cosmos_framework.scripts.caption_from_video` (single file or a
+  directory). Auto-resolves the built-in `video_captioner.txt` template (works
+  around the upstream default-path bug) and absolutizes the video path before the
+  framework `cd`. Verified live (1/1 captioned).
+- **`cosmos3_eval_videophy2` tool** + `c3-eval-videophy2` recipe: VideoPhy-2
+  physical-plausibility benchmark (`cosmos_framework.scripts.vlm.eval_videophy2`),
+  run+eval (hf_ckpt + val_root) or eval-only (results_dir). Multi-GPU via torchrun.
+  Verified live (accuracy + Pearson written to summary.json).
+- **`c3-serve-omni-super` recipe**: Cosmos3-Super multi-GPU vLLM-Omni serving with
+  `--tensor-parallel-size` / `--cfg-parallel-size` / `--ulysses-degree` /
+  `--enable-layerwise-offload` flags.
+
 ### Added — sound generation parity
 
 - **`cosmos3_image2video_sound` tool**: image + text → video with synchronized
@@ -26,6 +48,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reasoner settings. Previously direct-CLI reasoning omitted them (spec drift).
 - `cosmos3_image2video_sound` defaults to 480p (upstream default), aligning sound
   modes with the spec's recommended resolution tier.
+
+### Changed
+
+- **Default generation resolution aligned to 480p** (upstream Cosmos 3 default)
+  across all generator tools (`cosmos3_text2image/text2video/image2video/
+  text2video_sound/image2video_sound`), the `Cosmos3GeneratorModel.generate`
+  `resolution` default, the `c3-gen` recipe, and `GEN_DEFAULTS`. 720p remains a
+  selectable tier; only the default changed (faster + on-spec on Nano).
 
 
 ## [0.4.4] - 2026-06-04

@@ -11,8 +11,9 @@ Model Providers (use as Agent model):
   - CosmosModel: Reason2 text-only via HF Transformers
 
 Tools (use inside any Agent):
-  - 37 tools covering the full Cosmos pipeline via justfile recipes
-    (incl. 16 cosmos3_* tools: reason / generate / action / serve)
+  - 49 tools covering the full Cosmos pipeline via justfile recipes
+    (incl. 28 cosmos3_* tools: reason / generate (incl. sound) / action /
+     prompt-upsampling / batch-caption / videophy2-eval / training / serve)
   - See strands_cosmos.tools for the complete list
 """
 
@@ -31,7 +32,9 @@ from strands_cosmos.cosmos_vision_model import CosmosVisionModel
 from strands_cosmos.tools import (
     cosmos3_action_cot,
     cosmos3_caption,
+    cosmos3_caption_batch,
     cosmos3_embodied,
+    cosmos3_eval_videophy2,
     cosmos3_forward_dynamics,
     cosmos3_ground,
     cosmos3_image2video,
@@ -55,6 +58,7 @@ from strands_cosmos.tools import (
     # Cosmos 3 training
     cosmos3_train_recipes,
     cosmos3_train_show,
+    cosmos3_upsample_prompt,
     cosmos3_video2video,
     cosmos_build_engine,
     # Data
@@ -153,4 +157,7 @@ __all__ = [
     "cosmos3_train_prep_dataset",
     "cosmos3_train",
     "cosmos3_train_export",
+    "cosmos3_upsample_prompt",
+    "cosmos3_caption_batch",
+    "cosmos3_eval_videophy2",
 ]

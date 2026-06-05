@@ -41,6 +41,13 @@ from strands_cosmos.tools.cosmos3 import (
     cosmos3_video2video,
 )
 
+# Cosmos 3 extra (prompt upsampling / batch captioning / videophy2 eval)
+from strands_cosmos.tools.cosmos3_extra import (
+    cosmos3_caption_batch,
+    cosmos3_eval_videophy2,
+    cosmos3_upsample_prompt,
+)
+
 # ── Cosmos 3 post-training (SFT) ──────────────────────────
 from strands_cosmos.tools.cosmos3_train import (
     cosmos3_train,
@@ -148,4 +155,7 @@ __all__ = [
     "cosmos3_train_prep_dataset",
     "cosmos3_train",
     "cosmos3_train_export",
+    "cosmos3_upsample_prompt",
+    "cosmos3_caption_batch",
+    "cosmos3_eval_videophy2",
 ]
