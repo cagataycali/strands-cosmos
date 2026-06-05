@@ -872,7 +872,8 @@ c3-reason prompt image="" video="" task="" port=C3_REASON_PORT max_tokens="4096"
     content.append({"type": "text", "text": text})
     r = client.chat.completions.create(model=model, messages=[{"role":"user","content":content}],
         max_tokens={{max_tokens}}, temperature=0.6 if think else 0.7, top_p=0.95 if think else 0.8,
-        presence_penalty=0.0 if think else 1.5, seed=0)
+        presence_penalty=0.0 if think else 1.5, seed=0,
+        extra_body={"top_k": 20, "repetition_penalty": 1.0})
     print(r.choices[0].message.content)
     PY
 

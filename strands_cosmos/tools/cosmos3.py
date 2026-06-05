@@ -173,6 +173,21 @@ def cosmos3_text2video_sound(prompt: str, out: str = "/tmp/c3_t2v_sound.mp4",
 
 
 @tool
+def cosmos3_image2video_sound(prompt: str, image: str, out: str = "/tmp/c3_i2v_sound.mp4",
+                              frames: int = 189, fps: int = 24, steps: int = 35,
+                              guidance: float = 6.0, res: str = "480", seed: int = 0) -> dict:
+    """Cosmos 3 Generator: image + text -> video + synchronized audio (MP4+AAC) via Diffusers.
+
+    Image-conditioned motion with synchronized stereo AAC@48kHz sound. Needs a
+    sound-capable checkpoint (Cosmos3-Nano). In-proc Diffusers path (no server).
+    """
+    proc = just_run("c3-gen", "image2video-with-sound", prompt, image, out, str(frames),
+                    str(fps), str(steps), str(guidance), res, "true", str(seed),
+                    timeout_s=_GEN_TIMEOUT)
+    return proc_result(proc, "cosmos3 image2video+sound -> " + out, "c3 i2v-sound failed")
+
+
+@tool
 def cosmos3_video2video(
     video: str,
     prompt: str,
@@ -188,6 +203,8 @@ def cosmos3_video2video(
     guardrails: bool = True,
     condition_frames: str = "0",
     condition_keep: str = "last",
+    generate_sound: bool = False,
+    max_sequence_length: int = 512,
 ) -> dict:
     """Cosmos 3 video-to-video: re-render an input video with a new prompt.
 
@@ -219,6 +236,10 @@ def cosmos3_video2video(
             change). More indexes => closer to the original video.
         condition_keep: Which end of the clip the conditioning frames come from:
             "first" or "last" (default "last").
+        generate_sound: Produce a synchronized soundtrack (stereo AAC@48kHz)
+            alongside the transformed video (video-to-video-with-sound).
+        max_sequence_length: Max prompt tokens kept for conditioning (Cosmos 3
+            default 512); longer prompts are truncated with a warning.
     """
     import json as _json
     import os as _os
@@ -248,6 +269,8 @@ def cosmos3_video2video(
         "condition_frame_indexes_vision": cond_idx,
         "condition_video_keep": condition_keep,
     }
+    if generate_sound:
+        extra["generate_sound"] = True
     data = {
         "prompt": prompt,
         "negative_prompt": negative,
@@ -258,8 +281,11 @@ def cosmos3_video2video(
         "guidance_scale": str(guidance),
         "flow_shift": "10.0",
         "seed": str(seed),
+        "max_sequence_length": str(max_sequence_length),
         "extra_params": _json.dumps(extra),
     }
+    if generate_sound:
+        data["generate_sound"] = "true"
     try:
         with open(path, "rb") as f:
             resp = requests.post(
@@ -275,9 +301,11 @@ def cosmos3_video2video(
             g.write(resp.content)
         return ok(
             f"cosmos3 video2video -> {out} ({len(resp.content)} bytes) "
-            f"[guidance={guidance}, condition_frames={cond_idx}, keep={condition_keep}]",
+            f"[guidance={guidance}, condition_frames={cond_idx}, keep={condition_keep}, "
+            f"sound={generate_sound}]",
             data={"out": out, "bytes": len(resp.content),
-                  "condition_frame_indexes_vision": cond_idx, "condition_video_keep": condition_keep},
+                  "condition_frame_indexes_vision": cond_idx, "condition_video_keep": condition_keep,
+                  "generate_sound": generate_sound},
         )
     except Exception as e:
         return err("video2video request failed: " + str(e))

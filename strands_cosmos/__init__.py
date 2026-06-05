@@ -22,70 +22,71 @@ except ImportError:  # not installed via setuptools-scm build (e.g. editable pre
     __version__ = "0.0.0+unknown"
 
 
+from strands_cosmos.cosmos3_generator_model import Cosmos3GeneratorModel
+from strands_cosmos.cosmos3_reasoner_model import Cosmos3ReasonerModel
 from strands_cosmos.cosmos_model import CosmosModel
 from strands_cosmos.cosmos_vision_model import CosmosVisionModel
-from strands_cosmos.cosmos3_reasoner_model import Cosmos3ReasonerModel
-from strands_cosmos.cosmos3_generator_model import Cosmos3GeneratorModel
 
 # Export all tools for convenient access
 from strands_cosmos.tools import (
-    # Reason2 VLM
-    cosmos_inference,
-    cosmos_reason_hf,
-    cosmos_serve,
-    # Predict2.5
-    cosmos_predict_generate,
-    # Transfer2.5
-    cosmos_transfer_generate,
-    # Model lifecycle
-    cosmos_model_download,
-    cosmos_quantize,
-    cosmos_export_onnx,
-    cosmos_build_engine,
-    # Training
-    cosmos_post_train,
-    cosmos_distill,
-    # Data
-    cosmos_curate,
-    # Evaluation
-    cosmos_evaluate,
-    # I/O
-    rtp_capture_frame,
-    nats_publish,
-    video_probe,
-    video_extract_frames,
-    image_read,
-    # System
-    cosmos_sysinfo,
-    # Legacy
-    cosmos_invoke,
-    cosmos_vision_invoke,
+    cosmos3_action_cot,
+    cosmos3_caption,
+    cosmos3_embodied,
+    cosmos3_forward_dynamics,
+    cosmos3_ground,
+    cosmos3_image2video,
+    cosmos3_image2video_sound,
+    cosmos3_inverse_dynamics,
+    cosmos3_plausibility,
+    cosmos3_policy,
     # Cosmos 3
     cosmos3_reason,
-    cosmos3_caption,
-    cosmos3_temporal,
-    cosmos3_embodied,
-    cosmos3_ground,
-    cosmos3_plausibility,
+    cosmos3_serve,
     cosmos3_situation,
-    cosmos3_action_cot,
+    cosmos3_temporal,
     cosmos3_text2image,
     cosmos3_text2video,
-    cosmos3_image2video,
-    cosmos3_video2video,
     cosmos3_text2video_sound,
-    cosmos3_forward_dynamics,
-    cosmos3_inverse_dynamics,
-    cosmos3_policy,
-    cosmos3_serve,
+    cosmos3_train,
+    cosmos3_train_convert,
+    cosmos3_train_convert_vlm,
+    cosmos3_train_export,
+    cosmos3_train_prep_dataset,
     # Cosmos 3 training
     cosmos3_train_recipes,
     cosmos3_train_show,
-    cosmos3_train_convert,
-    cosmos3_train_convert_vlm,
-    cosmos3_train_prep_dataset,
-    cosmos3_train,
-    cosmos3_train_export,
+    cosmos3_video2video,
+    cosmos_build_engine,
+    # Data
+    cosmos_curate,
+    cosmos_distill,
+    # Evaluation
+    cosmos_evaluate,
+    cosmos_export_onnx,
+    # Reason2 VLM
+    cosmos_inference,
+    # Legacy
+    cosmos_invoke,
+    # Model lifecycle
+    cosmos_model_download,
+    # Training
+    cosmos_post_train,
+    # Predict2.5
+    cosmos_predict_generate,
+    cosmos_quantize,
+    cosmos_reason_hf,
+    cosmos_serve,
+    # System
+    cosmos_sysinfo,
+    # Transfer2.5
+    cosmos_transfer_generate,
+    cosmos_vision_invoke,
+    image_read,
+    nats_publish,
+    # I/O
+    rtp_capture_frame,
+    video_extract_frames,
+    video_probe,
 )
 
 __all__ = [
@@ -139,6 +140,7 @@ __all__ = [
     "cosmos3_image2video",
     "cosmos3_video2video",
     "cosmos3_text2video_sound",
+    "cosmos3_image2video_sound",
     "cosmos3_forward_dynamics",
     "cosmos3_inverse_dynamics",
     "cosmos3_policy",

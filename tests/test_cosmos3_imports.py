@@ -115,3 +115,19 @@ def test_cosmos3_video2video_conditioning_params():
     assert "condition_frames" in names
     assert "condition_keep" in names
     assert "guidance" in names
+
+
+def test_cosmos3_image2video_sound_tool():
+    from strands_cosmos import cosmos3_image2video_sound
+    assert hasattr(cosmos3_image2video_sound, "tool_spec") or callable(cosmos3_image2video_sound)
+    import strands_cosmos as sc
+    assert "cosmos3_image2video_sound" in sc.__all__
+
+
+def test_cosmos3_video2video_sound_params():
+    import inspect
+    from strands_cosmos import cosmos3_video2video
+    names = set(inspect.signature(
+        getattr(cosmos3_video2video, "__wrapped__", cosmos3_video2video)).parameters)
+    assert "generate_sound" in names
+    assert "max_sequence_length" in names

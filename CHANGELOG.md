@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — sound generation parity
+
+- **`cosmos3_image2video_sound` tool**: image + text → video with synchronized
+  stereo AAC@48kHz audio via in-proc Diffusers (`image2video-with-sound` mode).
+  Closes the missing "Image-to-video with sound" Generator workflow.
+- **`cosmos3_video2video` gains `generate_sound`**: produce a synchronized
+  soundtrack alongside the transformed video (video-to-video-with-sound), routed
+  through the omni server's `generate_sound=true`. Verified live: h264 + aac
+  stereo @ 48kHz.
+- **`cosmos3_video2video` gains `max_sequence_length`** (Cosmos 3 default 512) so
+  long prompts no longer silently truncate.
+
+### Fixed
+
+- `c3-reason` justfile recipe now passes the spec sampling controls `top_k=20`
+  and `repetition_penalty=1.0` (via `extra_body`), matching the Cosmos 3 README
+  reasoner settings. Previously direct-CLI reasoning omitted them (spec drift).
+- `cosmos3_image2video_sound` defaults to 480p (upstream default), aligning sound
+  modes with the spec's recommended resolution tier.
+
+
 ## [0.4.4] - 2026-06-04
 
 ### Changed
