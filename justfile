@@ -872,12 +872,13 @@ c3-reason prompt image="" video="" task="" port=C3_REASON_PORT max_tokens="4096"
     content.append({"type": "text", "text": text})
     r = client.chat.completions.create(model=model, messages=[{"role":"user","content":content}],
         max_tokens={{max_tokens}}, temperature=0.6 if think else 0.7, top_p=0.95 if think else 0.8,
-        presence_penalty=0.0 if think else 1.5, seed=0)
+        presence_penalty=0.0 if think else 1.5, seed=0,
+        extra_body={"top_k": 20, "repetition_penalty": 1.0})
     print(r.choices[0].message.content)
     PY
 
 # ── Generator: in-proc Diffusers generation ────────────────────────────────
-c3-gen mode="text2video" prompt="" image="" out="/tmp/c3_out.mp4" frames="189" fps="24" steps="35" guidance="6.0" res="720" sound="false" seed="0":
+c3-gen mode="text2video" prompt="" image="" out="/tmp/c3_out.mp4" frames="189" fps="24" steps="35" guidance="6.0" res="480" sound="false" seed="0":
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{C3_GEN_VENV}}/bin/activate" 2>/dev/null || true
@@ -1081,3 +1082,111 @@ c3-v2v input prompt out="/tmp/omni-work/v2v_out.mp4" port=C3_OMNI_PORT steps="35
       -F "input_reference=@{{input}}" \
       -o "{{out}}" -w "HTTP %{http_code} bytes=%{size_download}\n"
     echo "video2video -> {{out}}"
+
+
+# Cosmos 3 — Prompt upsampling / batch captioning / VideoPhy2 eval
+# Wrappers over cosmos_framework scripts. The framework venv is set up by
+# `just c3-setup-framework`. Reasoner-backed scripts need a reasoner server
+# (just c3-serve-reason) on C3_REASON_PORT.
+
+C3_FW_PY := env_var_or_default("C3_FW_PY", C3_FRAMEWORK_REPO + "/.venv/bin/python")
+
+# Prompt upsampling: expand a short scene description into a dense structured
+# prompt (Cosmos 3 generator prompt-upsampling). Standalone — builds the
+# canonical v4.2 messages and queries the reasoner server (no full sample files).
+# task: t2v | t2i | i2v . Needs a reasoner server on `port`.
+c3-upsample description task="t2v" port=C3_REASON_PORT aspect="16,9" width="832" height="480" fps="24" duration="8" image="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    "{{C3_FW_PY}}" - "$@" <<'PY'
+    import json, os, sys, base64, mimetypes
+    from openai import OpenAI
+    from cosmos_framework.model.vfm.upsampler.prompts import build_messages, clean_response
+    task, desc = "{{task}}", """{{description}}"""
+    port, image = "{{port}}", "{{image}}"
+    kw = dict(task=task, description=desc, aspect_ratio="{{aspect}}",
+              resolution_w={{width}}, resolution_h={{height}})
+    if task in ("t2v", "i2v"):
+        kw.update(fps={{fps}}, duration_secs={{duration}})
+    messages = build_messages(**kw)
+    # i2v: attach the conditioning image to the user message
+    if task == "i2v" and image:
+        url = image if "://" in image else "data:%s;base64,%s" % (
+            mimetypes.guess_type(image)[0] or "image/png",
+            base64.b64encode(open(image,"rb").read()).decode())
+        um = messages[1]
+        content = [{"type":"image_url","image_url":{"url":url}},
+                   {"type":"text","text":um["content"] if isinstance(um["content"],str) else um["content"]}]
+        um["content"] = content
+    client = OpenAI(base_url=f"http://localhost:{port}/v1", api_key="EMPTY")
+    model = client.models.list().data[0].id
+    r = client.chat.completions.create(model=model, messages=messages,
+        max_tokens=20000, temperature=0.7, top_p=0.8, presence_penalty=1.5, seed=3407,
+        extra_body={"top_k": 20, "min_p": 0.0})
+    text = r.choices[0].message.content.strip()
+    cleaned, _ = clean_response(text)
+    cleaned = cleaned.removeprefix("```json\n").removesuffix("```").strip()
+    print(cleaned)
+    PY
+
+# Batch video captioning via the framework script (reasoner-backed VLM).
+# video: a single video OR a directory of videos. Needs a reasoner server.
+c3-caption-batch video out="/tmp/c3_captions" port=C3_REASON_PORT workers="16" template="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Resolve the video to an absolute path BEFORE cd (recipe runs from the
+    # framework checkout, so a relative video path would not be found there).
+    vid="{{video}}"; case "$vid" in /*) ;; *) vid="$(cd "$(dirname "$vid")" && pwd)/$(basename "$vid")";; esac
+    out="{{out}}"; case "$out" in /*) ;; *) out="$(pwd)/$out";; esac
+    cd "{{C3_FRAMEWORK_REPO}}"
+    # Upstream's default lookup (cosmos_framework/defaults/video_captioner.txt) is
+    # wrong in this checkout — the template ships under inference/defaults. Auto-fill
+    # it so batch captioning works out of the box; honor an explicit override.
+    tmpl="{{template}}"
+    if [ -z "$tmpl" ]; then
+      for cand in cosmos_framework/inference/defaults/video_captioner.txt \
+                  cosmos_framework/defaults/video_captioner.txt; do
+        [ -f "$cand" ] && tmpl="$cand" && break
+      done
+    fi
+    args=(-v "$vid" -o "$out" --server "http://localhost:{{port}}/v1" --max-workers {{workers}})
+    [ -n "$tmpl" ] && args+=(--prompt_template_path "$tmpl")
+    .venv/bin/python -m cosmos_framework.scripts.caption_from_video "${args[@]}"
+    echo "captions -> $out"
+
+# VideoPhy-2 evaluation (Cosmos 3 task-specific eval). Two modes:
+#   run+eval:  pass hf_ckpt + val_root (loads HF export, runs, writes summary.json)
+#   eval-only: pass only results_dir (re-scores an existing results dir)
+c3-eval-videophy2 results_dir hf_ckpt="" val_root="" batch_size="1" max_new_tokens="256" nproc="1":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{C3_FRAMEWORK_REPO}}"
+    args=(--results_dir "{{results_dir}}" --batch_size {{batch_size}} --max_new_tokens {{max_new_tokens}})
+    [ -n "{{hf_ckpt}}" ]  && args+=(--hf_ckpt "{{hf_ckpt}}")
+    [ -n "{{val_root}}" ] && args+=(--val_root "{{val_root}}")
+    if [ "{{nproc}}" != "1" ]; then
+      torchrun --nproc_per_node={{nproc}} -m cosmos_framework.scripts.vlm.eval_videophy2 "${args[@]}"
+    else
+      .venv/bin/python -m cosmos_framework.scripts.vlm.eval_videophy2 "${args[@]}"
+    fi
+    echo "videophy2 eval -> {{results_dir}}/summary.json"
+
+# Generator server (vLLM-Omni) with multi-GPU flags for Cosmos3-Super (64B).
+# tp/cfg/ulysses parallelism + optional layerwise offload. Ensure the host has
+# at least tp*cfg*ulysses GPUs. Single GPU (Nano): leave all at defaults.
+c3-serve-omni-super model="nvidia/Cosmos3-Super" port=C3_OMNI_PORT tp="4" cfg="1" ulysses="1" offload="false":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source ".venv-c3-omni/bin/activate" 2>/dev/null || true
+    extra=""
+    [ "{{tp}}" != "1" ]      && extra="$extra --tensor-parallel-size {{tp}}"
+    [ "{{cfg}}" != "1" ]     && extra="$extra --cfg-parallel-size {{cfg}}"
+    [ "{{ulysses}}" != "1" ] && extra="$extra --ulysses-degree {{ulysses}}"
+    [ "{{offload}}" = "true" ] && extra="$extra --enable-layerwise-offload"
+    nohup vllm serve "{{model}}" --omni \
+      --model-class-name Cosmos3OmniDiffusersPipeline \
+      $extra \
+      --allowed-local-media-path / --port {{port}} --init-timeout 1800 \
+      > "{{C3_OMNI_LOG}}" 2>&1 &
+    echo $! > "{{C3_OMNI_PID}}"
+    echo "🚀 Omni-Super serving (pid $(cat {{C3_OMNI_PID}})) on :{{port}} [tp={{tp}} cfg={{cfg}} ulysses={{ulysses}} offload={{offload}}]"

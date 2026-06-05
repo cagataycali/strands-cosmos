@@ -115,3 +115,53 @@ def test_cosmos3_video2video_conditioning_params():
     assert "condition_frames" in names
     assert "condition_keep" in names
     assert "guidance" in names
+
+
+def test_cosmos3_image2video_sound_tool():
+    from strands_cosmos import cosmos3_image2video_sound
+    assert hasattr(cosmos3_image2video_sound, "tool_spec") or callable(cosmos3_image2video_sound)
+    import strands_cosmos as sc
+    assert "cosmos3_image2video_sound" in sc.__all__
+
+
+def test_cosmos3_video2video_sound_params():
+    import inspect
+    from strands_cosmos import cosmos3_video2video
+    names = set(inspect.signature(
+        getattr(cosmos3_video2video, "__wrapped__", cosmos3_video2video)).parameters)
+    assert "generate_sound" in names
+    assert "max_sequence_length" in names
+
+
+def test_cosmos3_extra_tools_import():
+    from strands_cosmos import (
+        cosmos3_upsample_prompt, cosmos3_caption_batch, cosmos3_eval_videophy2,
+    )
+    import strands_cosmos as sc
+    for n in ["cosmos3_upsample_prompt", "cosmos3_caption_batch", "cosmos3_eval_videophy2"]:
+        assert n in sc.__all__, f"{n} missing from __all__"
+    for t in [cosmos3_upsample_prompt, cosmos3_caption_batch, cosmos3_eval_videophy2]:
+        assert hasattr(t, "tool_spec") or callable(t)
+
+
+def test_cosmos3_upsample_task_validation():
+    from strands_cosmos import cosmos3_upsample_prompt
+    # invalid task returns an error result without hitting any server
+    r = cosmos3_upsample_prompt("a robot", task="bogus")
+    assert r["status"] == "error"
+
+
+def test_cosmos3_default_resolution_is_480():
+    """Upstream Generator default resolution is 480p; our defaults should match."""
+    import inspect
+    from strands_cosmos import (
+        cosmos3_text2image, cosmos3_text2video, cosmos3_image2video,
+        cosmos3_text2video_sound, cosmos3_image2video_sound,
+    )
+    from strands_cosmos.cosmos3_generator_model import Cosmos3GeneratorModel
+    for fn in [cosmos3_text2image, cosmos3_text2video, cosmos3_image2video,
+               cosmos3_text2video_sound, cosmos3_image2video_sound]:
+        sig = inspect.signature(getattr(fn, "__wrapped__", fn))
+        assert sig.parameters["res"].default == "480", f"{fn} res default != 480"
+    gsig = inspect.signature(Cosmos3GeneratorModel.generate)
+    assert gsig.parameters["resolution"].default == "480"
