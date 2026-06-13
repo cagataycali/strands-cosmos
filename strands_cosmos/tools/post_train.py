@@ -1,10 +1,21 @@
-"""Wrapper around `just post-train-*` recipes."""
-from __future__ import annotations
+"""Wrapper around `just post-train-*` recipes.
 
-from pathlib import Path
+SECURITY: ``config_path`` is LLM-controlled and is interpolated positionally
+into the post-train recipes (``--config "{{config}}"``). It is therefore
+confined to the workspace allow-list (CWE-22) AND validated to carry no
+shell/`just`-template metacharacters (CWE-78) before it reaches ``just``.
+``model_family``/``strategy`` are constrained to fixed enums; ``num_gpus`` is
+coerced to int.
+"""
+from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result, err
+from ._security import SecurityError, resolve_in_workspace, validate_identifier
+
+
+_FAMILIES = {"reason2", "predict2_5", "transfer2_5"}
+_STRATEGIES = {"full", "lora", "rl"}
 
 
 @tool
@@ -24,25 +35,35 @@ def cosmos_post_train(
       - transfer2_5         → `just post-train-transfer <config> <num_gpus>`
 
     Args:
-        config_path: YAML / TOML training config.
+        config_path: YAML / TOML training config (inside the workspace).
         model_family: reason2 | predict2_5 | transfer2_5.
         strategy: full | lora | rl (rl is reason2 only).
         num_gpus: GPUs per node (predict/transfer only).
         dry_run: If True, just preview the recipe name.
     """
-    if not Path(config_path).exists():
-        return err(f"config not found: {config_path}")
+    # Constrain enums first (positionally interpolated, CWE-78 defense).
+    if model_family not in _FAMILIES:
+        return err(f"unknown model_family: {model_family!r} (allowed: {sorted(_FAMILIES)})")
+    if strategy not in _STRATEGIES:
+        return err(f"invalid strategy: {strategy!r} (allowed: {sorted(_STRATEGIES)})")
+
+    # Confine the (LLM-controlled) config path to the workspace, then assert it
+    # carries no shell/template metacharacters before it is interpolated into
+    # the recipe. resolve_in_workspace already rejects '..'/escape + non-existence.
+    try:
+        resolved = str(resolve_in_workspace(config_path, must_exist=True))
+        config_path = validate_identifier(resolved, what="config_path")
+    except SecurityError as e:
+        return err(str(e))
 
     if model_family == "reason2" and strategy == "rl":
         recipe, args = "post-train-reason2-rl", (config_path,)
     elif model_family == "reason2":
         recipe, args = "post-train-reason2", (config_path, strategy)
     elif model_family == "predict2_5":
-        recipe, args = "post-train-predict", (config_path, str(num_gpus))
-    elif model_family == "transfer2_5":
-        recipe, args = "post-train-transfer", (config_path, str(num_gpus))
-    else:
-        return err(f"unknown model_family: {model_family}")
+        recipe, args = "post-train-predict", (config_path, str(int(num_gpus)))
+    else:  # transfer2_5
+        recipe, args = "post-train-transfer", (config_path, str(int(num_gpus)))
 
     if dry_run:
         return proc_result(

@@ -924,8 +924,14 @@ c3-reason port=C3_REASON_PORT max_tokens="4096" think="false":
     set -euo pipefail
     source "{{C3_REASON_VENV}}/bin/activate" 2>/dev/null || true
     C3_THINK="{{think}}" C3_PORT="{{port}}" C3_MAX_TOKENS="{{max_tokens}}" python3 - <<'PY'
-    import os
+    import os, sys
+    sys.path.insert(0, ".")
     from openai import OpenAI
+    # SECURITY: route LLM/operator media refs through the SAME hardened resolver
+    # the SDK provider uses -- workspace-confined base64 data URI (no file://
+    # escape), SSRF-guarded for remote URLs (CWE-22/CWE-918). DRY with the agent
+    # path so the operator CLI cannot read outside COSMOS_WORKSPACE either.
+    from strands_cosmos.cosmos3_reasoner_model import _media_to_url
     prompt = os.environ.get("C3_PROMPT", "")
     image = os.environ.get("C3_IMAGE", "")
     video = os.environ.get("C3_VIDEO", "")
@@ -936,8 +942,8 @@ c3-reason port=C3_REASON_PORT max_tokens="4096" think="false":
     client = OpenAI(base_url=f"http://localhost:{port}/v1", api_key="EMPTY")
     model = client.models.list().data[0].id
     content = []
-    if image: content.append({"type": "image_url", "image_url": {"url": image if image.startswith("http") else f"file://{os.path.abspath(image)}"}})
-    if video: content.append({"type": "video_url", "video_url": {"url": video if video.startswith("http") else f"file://{os.path.abspath(video)}"}})
+    if image: content.append({"type": "image_url", "image_url": {"url": _media_to_url(image)}})
+    if video: content.append({"type": "video_url", "video_url": {"url": _media_to_url(video)}})
     text = prompt
     if think: text += "\n\nAnswer in the format: <think>\nreasoning\n</think>\n\n<answer>\nanswer\n</answer>."
     content.append({"type": "text", "text": text})
@@ -1200,8 +1206,13 @@ c3-upsample task="t2v" port=C3_REASON_PORT aspect="16,9" width="832" height="480
     C3_UP_TASK="{{task}}" C3_UP_PORT="{{port}}" C3_UP_ASPECT="{{aspect}}" \
     C3_UP_WIDTH="{{width}}" C3_UP_HEIGHT="{{height}}" C3_UP_FPS="{{fps}}" \
     C3_UP_DURATION="{{duration}}" "{{C3_FW_PY}}" - <<'PY'
-    import os, base64, mimetypes
+    import os, sys, base64, mimetypes
+    sys.path.insert(0, ".")
     from openai import OpenAI
+    # SECURITY: confine the i2v conditioning image via the shared hardened
+    # resolver (workspace allow-list + SSRF), instead of reading an arbitrary
+    # local path (CWE-22/CWE-918).
+    from strands_cosmos.cosmos3_reasoner_model import _media_to_url
     from cosmos_framework.model.vfm.upsampler.prompts import build_messages, clean_response
     task = os.environ.get("C3_UP_TASK", "t2v")
     desc = os.environ.get("C3_UP_DESC", "")
@@ -1214,9 +1225,7 @@ c3-upsample task="t2v" port=C3_REASON_PORT aspect="16,9" width="832" height="480
     messages = build_messages(**kw)
     # i2v: attach the conditioning image to the user message
     if task == "i2v" and image:
-        url = image if "://" in image else "data:%s;base64,%s" % (
-            mimetypes.guess_type(image)[0] or "image/png",
-            base64.b64encode(open(image,"rb").read()).decode())
+        url = _media_to_url(image)
         um = messages[1]
         content = [{"type":"image_url","image_url":{"url":url}},
                    {"type":"text","text":um["content"] if isinstance(um["content"],str) else um["content"]}]

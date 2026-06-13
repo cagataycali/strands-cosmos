@@ -4,7 +4,8 @@
 Parses every tool module's AST and flags any `just_run(...)` positional arg
 (after the recipe name) that is NOT provably safe. Safe forms:
   - string/number literal, or ternary whose branches are literals;
-  - `str(...)`, `int(...)`, `float(...)` calls (numerics) and `*args` expansion;
+  - `str(...)`, `int(...)`, `float(...)` calls (numerics) and `*args` expansion
+    *whose backing tuple elements are each independently safe*;
   - a name produced by a sanitizer (validate_identifier/resolve_*/validate_url);
   - a name guarded by an enum-membership check earlier in the function, i.e.
     `if NAME not in {...}/SET: return ...` (the value is one of a fixed set);
@@ -64,10 +65,39 @@ def _is_literal_ternary(arg: ast.expr) -> bool:
             and isinstance(arg.orelse, ast.Constant))
 
 
-def _arg_is_safe(arg: ast.expr, sanitized: set[str]) -> bool:
+def _tuple_assignments(func: ast.FunctionDef) -> dict:
+    """Map a variable name -> list of tuple-element exprs ever assigned to it.
+
+    Handles both `x = (a, b)` and `recipe, x = "r", (a, b)` shapes. A name that
+    is assigned a non-tuple value anywhere is recorded as None (unknowable),
+    which forces the gate to treat its `*expansion` as unsafe.
+    """
+    out: dict = {}
+
+    def _record(target: ast.expr, value: ast.expr):
+        if not isinstance(target, ast.Name):
+            return
+        if isinstance(value, (ast.Tuple, ast.List)):
+            out.setdefault(target.id, []).append(list(value.elts))
+        else:
+            out[target.id] = None  # non-tuple assignment -> unknowable
+
+    for node in ast.walk(func):
+        if isinstance(node, ast.Assign):
+            for tgt in node.targets:
+                if isinstance(tgt, ast.Name):
+                    _record(tgt, node.value)
+                elif isinstance(tgt, (ast.Tuple, ast.List)) and isinstance(
+                    node.value, (ast.Tuple, ast.List)
+                ) and len(tgt.elts) == len(node.value.elts):
+                    # parallel unpack: recipe, args = "r", (a, b)
+                    for t_el, v_el in zip(tgt.elts, node.value.elts):
+                        _record(t_el, v_el)
+    return out
+
+
+def _arg_is_safe(arg: ast.expr, sanitized: set[str], tuples: dict) -> bool:
     if isinstance(arg, ast.Constant):
-        return True
-    if isinstance(arg, ast.Starred):
         return True
     if _is_literal_ternary(arg):
         return True
@@ -76,6 +106,20 @@ def _arg_is_safe(arg: ast.expr, sanitized: set[str]) -> bool:
     if isinstance(arg, ast.Attribute):
         # tmp.name  (NamedTemporaryFile generated path)
         return arg.attr == "name"
+    if isinstance(arg, ast.Starred):
+        # `*args` is ONLY safe if every tuple element ever bound to that name is
+        # itself provably safe. An unknowable (non-tuple) binding -> unsafe.
+        val = arg.value
+        if not isinstance(val, ast.Name):
+            return False
+        groups = tuples.get(val.id, None)
+        if not groups:  # never assigned a literal tuple, or recorded as None
+            return False
+        return all(
+            _arg_is_safe(el, sanitized, tuples)
+            for group in groups
+            for el in group
+        )
     if isinstance(arg, ast.Call):
         fn = arg.func
         fname = fn.id if isinstance(fn, ast.Name) else getattr(fn, "attr", "")
@@ -92,12 +136,13 @@ def test_no_untrusted_just_interpolation():
         tree = ast.parse(py.read_text())
         for func in [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]:
             sanitized = _sanitized_names(func)
+            tuples = _tuple_assignments(func)
             for node in ast.walk(func):
                 if (isinstance(node, ast.Call)
                         and isinstance(node.func, ast.Name)
                         and node.func.id == "just_run"):
                     for i, a in enumerate(node.args[1:], start=1):
-                        if not _arg_is_safe(a, sanitized):
+                        if not _arg_is_safe(a, sanitized, tuples):
                             offenders.append(
                                 f"{py.name}:{node.lineno} just_run positional #{i}: "
                                 f"{ast.dump(a)[:80]}"

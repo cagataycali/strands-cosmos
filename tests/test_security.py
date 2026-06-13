@@ -294,3 +294,60 @@ def test_rtp_confines_output(workspace):
     from strands_cosmos.tools.rtp import rtp_capture_frame
     res = rtp_capture_frame(output_path="/etc/cron.d/evil")
     assert res["status"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# Finding 1/7 (CWE-78) regression: cosmos_post_train config_path containment.
+# Previously config_path reached `just {{config}}` guarded only by the denylist
+# chokepoint; it is now workspace-confined + identifier-validated (two layers).
+# ---------------------------------------------------------------------------
+def test_post_train_blocks_path_outside_workspace(workspace):
+    from strands_cosmos.tools.post_train import cosmos_post_train
+
+    r = cosmos_post_train(config_path="/etc/passwd", model_family="reason2")
+    assert r["status"] == "error"
+    assert "workspace" in r["content"][0]["text"].lower()
+
+
+def test_post_train_blocks_metachar_config(workspace):
+    from strands_cosmos.tools.post_train import cosmos_post_train
+
+    # A file whose name carries a quote (the `just` breakout vector). It exists,
+    # so .resolve()/.exists() pass, but validate_identifier must reject it.
+    bad = workspace / 'cfg".yaml'
+    bad.write_text("x")
+    r = cosmos_post_train(config_path=str(bad), model_family="reason2")
+    assert r["status"] == "error"
+    assert "invalid config_path" in r["content"][0]["text"]
+
+
+def test_post_train_rejects_bad_family(workspace):
+    from strands_cosmos.tools.post_train import cosmos_post_train
+
+    cfg = workspace / "train.yaml"
+    cfg.write_text("x")
+    r = cosmos_post_train(config_path=str(cfg), model_family="evil", dry_run=True)
+    assert r["status"] == "error"
+    assert "model_family" in r["content"][0]["text"]
+
+
+def test_post_train_rejects_bad_strategy(workspace):
+    from strands_cosmos.tools.post_train import cosmos_post_train
+
+    cfg = workspace / "train.yaml"
+    cfg.write_text("x")
+    r = cosmos_post_train(config_path=str(cfg), strategy="pwn", dry_run=True)
+    assert r["status"] == "error"
+    assert "strategy" in r["content"][0]["text"]
+
+
+def test_post_train_allows_legit_dry_run(workspace):
+    from strands_cosmos.tools.post_train import cosmos_post_train
+
+    cfg = workspace / "train.yaml"
+    cfg.write_text("x")
+    r = cosmos_post_train(
+        config_path=str(cfg), model_family="reason2", strategy="full", dry_run=True
+    )
+    assert r["status"] == "success"
+    assert "post-train-reason2" in r["content"][0]["text"]
