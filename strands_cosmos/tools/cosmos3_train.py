@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Cosmos 3 post-training (SFT) tools — thin wrappers over justfile `c3-train-*` recipes.
 
 Supervised fine-tuning of Cosmos 3 models via the NVIDIA Cosmos Framework
@@ -21,6 +23,7 @@ from __future__ import annotations
 from strands import tool
 
 from ._common import just_run, proc_result
+from ._security import SecurityError, validate_identifier
 
 # Training is long-running; allow generous timeouts.
 _CONVERT_TIMEOUT = 60 * 60        # 1h: checkpoint download + DCP conversion
@@ -30,7 +33,12 @@ _QUICK_TIMEOUT = 60 * 10          # 10m: listing / config show / dataset prep
 
 @tool
 def cosmos3_train_recipes() -> dict:
-    """List the Cosmos 3 SFT recipes + launch shells available in the framework checkout."""
+    """List the Cosmos 3 SFT recipes + launch shells available in the framework checkout.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
+    """
     proc = just_run("c3-train-recipes", timeout_s=_QUICK_TIMEOUT)
     return proc_result(proc, "cosmos3 SFT recipes:", "c3-train-recipes failed")
 
@@ -42,7 +50,16 @@ def cosmos3_train_show(recipe: str = "vision_sft_nano") -> dict:
     Args:
         recipe: SFT recipe name (e.g. vision_sft_nano, vision_sft_super,
             llava_ov, videophy2_nano).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
+    try:
+        recipe = validate_identifier(recipe, what="recipe")
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     proc = just_run("c3-train-show", recipe, timeout_s=_QUICK_TIMEOUT)
     return proc_result(proc, "cosmos3 train config (" + recipe + "):", "c3-train-show failed")
 
@@ -54,7 +71,17 @@ def cosmos3_train_convert(checkpoint: str = "nvidia/Cosmos3-Nano", out: str = ""
     Args:
         checkpoint: Catalog name / HF id (e.g. Cosmos3-Nano, Cosmos3-Super).
         out: Output DCP dir (default examples/checkpoints/<name>).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
+    try:
+        checkpoint = validate_identifier(checkpoint, what="checkpoint")
+        out = validate_identifier(out, what="out", allow_empty=True)
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     proc = just_run("c3-train-convert", checkpoint, out, timeout_s=_CONVERT_TIMEOUT)
     return proc_result(proc, "cosmos3 checkpoint -> DCP", "c3-train-convert failed")
 
@@ -69,7 +96,17 @@ def cosmos3_train_convert_vlm(
     Args:
         checkpoint: Base checkpoint (e.g. Cosmos3-Nano).
         out: Output VLM safetensors dir.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
+    try:
+        checkpoint = validate_identifier(checkpoint, what="checkpoint")
+        out = validate_identifier(out, what="out", allow_empty=True)
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     proc = just_run("c3-train-convert-vlm", checkpoint, out, timeout_s=_CONVERT_TIMEOUT)
     return proc_result(proc, "cosmos3 VLM checkpoint -> " + out, "c3-train-convert-vlm failed")
 
@@ -81,7 +118,17 @@ def cosmos3_train_prep_dataset(captions: str, out: str) -> dict:
     Args:
         captions: Path to the input captions JSONL.
         out: Path to write the SFT dataset JSONL.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
+    try:
+        captions = validate_identifier(captions, what="captions")
+        out = validate_identifier(out, what="out")
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     proc = just_run("c3-train-prep-dataset", captions, out, timeout_s=_QUICK_TIMEOUT)
     return proc_result(proc, "cosmos3 SFT dataset -> " + out, "c3-train-prep-dataset failed")
 
@@ -105,7 +152,19 @@ def cosmos3_train(
         dataset: Override DATASET_PATH (default: recipe's examples/data path).
         checkpoint: Override BASE_CHECKPOINT_PATH (the DCP dir from convert step).
         overrides: Space-separated Hydra tail overrides applied after `--`.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
+    try:
+        recipe = validate_identifier(recipe, what="recipe")
+        dataset = validate_identifier(dataset, what="dataset", allow_empty=True)
+        checkpoint = validate_identifier(checkpoint, what="checkpoint", allow_empty=True)
+        overrides = validate_identifier(overrides, what="overrides", allow_empty=True)
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     proc = just_run(
         "c3-train", recipe, str(nproc), dataset, checkpoint, overrides,
         timeout_s=_TRAIN_TIMEOUT,
@@ -120,6 +179,16 @@ def cosmos3_train_export(run_dir: str, out: str = "") -> dict:
     Args:
         run_dir: Training run dir ($IMAGINAIRE_OUTPUT_ROOT/<project>/<group>/<name>).
         out: Output dir (default <run_dir>/hf_export).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
+    try:
+        run_dir = validate_identifier(run_dir, what="run_dir")
+        out = validate_identifier(out, what="out", allow_empty=True)
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     proc = just_run("c3-train-export", run_dir, out, timeout_s=_CONVERT_TIMEOUT)
     return proc_result(proc, "cosmos3 trained checkpoint -> HF safetensors", "c3-train-export failed")

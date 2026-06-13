@@ -5,6 +5,9 @@ Prerequisites:
     just c3-serve-reason      # start Cosmos3-Nano server on :8000
 
 Then run this example. Caption + temporal + embodied reasoning on a video.
+
+📓 Learn-first notebook: ../notebooks/06_cosmos3_understand.ipynb
+   ("Cosmos 3: The Reasoner" — same concepts, explained step by step with diagrams.)
 """
 import os
 import sys

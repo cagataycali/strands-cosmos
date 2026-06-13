@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """NVIDIA Cosmos 3 Reasoner model provider for Strands Agents.
 
 Cosmos 3 is an omnimodal world model. The **Reasoner** surface produces text
@@ -108,20 +110,28 @@ TASK_PROMPTS = {
 def _media_to_url(path_or_url: str) -> str:
     """Resolve a media reference to a URL the vLLM server accepts.
 
-    - http(s):// URLs pass through.
-    - Local files become base64 data URIs (works regardless of server CWD/policy).
+    ``http(s)://`` URLs are validated and passed through; local files are
+    confined to the project workspace and encoded as a base64 data URI (no
+    ``file://`` fallback, so the server cannot read arbitrary local paths).
     """
-    if path_or_url.startswith(("http://", "https://", "data:")):
+    from .tools._security import (
+        resolve_in_workspace,
+        validate_url,
+    )
+
+    if path_or_url.startswith(("http://", "https://")):
+        # Remote media the server fetches: allow public hosts but block
+        # private/link-local/metadata SSRF targets (CWE-918).
+        return validate_url(path_or_url, allow_public=True)
+    if path_or_url.startswith("data:"):
         return path_or_url
-    p = os.path.expanduser(path_or_url)
-    if os.path.exists(p):
-        mime, _ = mimetypes.guess_type(p)
-        mime = mime or "application/octet-stream"
-        with open(p, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode("utf-8")
-        return f"data:{mime};base64,{b64}"
-    # Fall back to file:// (requires --allowed-local-media-path on server)
-    return f"file://{os.path.abspath(p)}"
+    # Local file: confine to the workspace before reading (no file:// escape).
+    p = resolve_in_workspace(path_or_url, must_exist=True)
+    mime, _ = mimetypes.guess_type(str(p))
+    mime = mime or "application/octet-stream"
+    with open(p, "rb") as fh:
+        b64 = base64.b64encode(fh.read()).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
 
 
 class Cosmos3ReasonerModel(Model):
@@ -226,7 +236,9 @@ class Cosmos3ReasonerModel(Model):
     def _extract_media_to_openai(self, messages: Messages) -> List[Dict[str, Any]]:
         """Convert Strands messages → OpenAI chat content with media URLs.
 
-        Parses inline <video>/<image> tags and ContentBlock image data.
+        Parses native image/video ContentBlocks (preferred) and, for backward
+        compatibility, inline <image>/<video> tags. All media routes through
+        the same hardened `_media_to_url` resolver.
         """
         oai_messages: List[Dict[str, Any]] = []
 
@@ -266,6 +278,21 @@ class Cosmos3ReasonerModel(Model):
                     else:
                         url = _media_to_url(source.get("url", ""))
                     parts.append({"type": "image_url", "image_url": {"url": url}})
+
+                elif "video" in content:
+                    # Native Strands video ContentBlock: {"source": {...}, "format": "mp4"}
+                    # Mirrors the image path so video flows through the SAME hardened
+                    # media resolver (workspace-confine + base64 / SSRF allow-list)
+                    # instead of the old <video> tag-string-in-prompt shape.
+                    vid = content["video"]
+                    source = vid.get("source", {})
+                    if "bytes" in source:
+                        fmt = vid.get("format", "mp4")
+                        b64 = base64.b64encode(source["bytes"]).decode("utf-8")
+                        url = f"data:video/{fmt};base64,{b64}"
+                    else:
+                        url = _media_to_url(source.get("url", ""))
+                    parts.append({"type": "video_url", "video_url": {"url": url}})
 
             if parts:
                 # OpenAI requires non-empty content; collapse single text to str

@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Strands Cosmos - NVIDIA Cosmos ecosystem provider for Strands Agents.
 
 Full-lifecycle support across Cosmos 3 (omnimodal) and Cosmos-Reason2 (VLM):

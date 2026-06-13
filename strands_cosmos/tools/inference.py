@@ -1,12 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Cosmos-Reason2 VLM inference against TRT-Edge-LLM HTTP server."""
 from __future__ import annotations
 
 import base64
 import time
-from pathlib import Path
 
 from strands import tool
-from ._common import ok, err
+
+from ._common import err, ok
+from ._security import SecurityError, resolve_in_workspace, validate_url
 
 
 @tool
@@ -34,6 +37,10 @@ def cosmos_inference(
         temperature: Sampling temperature (0.0-1.0).
         system_prompt: Optional system prompt.
         return_image: If True, include the input image in the response.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the model's text response; on error ``status`` is ``"error"`` with a message.
     """
     import os
 
@@ -44,6 +51,13 @@ def cosmos_inference(
 
     url = server_url or os.getenv("COSMOS_VLM_URL", "http://127.0.0.1:8080/v1/chat/completions")
 
+    # SSRF guard: validate the (possibly LLM-supplied) endpoint against the
+    # host allow-list and block private/link-local/metadata targets (CWE-918).
+    try:
+        url = validate_url(url)
+    except SecurityError as e:
+        return err(str(e), data={"url": url})
+
     if image_path and image_b64:
         return err("provide exactly one of image_path or image_b64")
     if not image_path and not image_b64:
@@ -51,9 +65,11 @@ def cosmos_inference(
 
     image_bytes: bytes | None = None
     if image_path:
-        p = Path(image_path).expanduser()
-        if not p.exists():
-            return err(f"image not found: {p}")
+        # Confine the (LLM-supplied) image path to the workspace (CWE-22).
+        try:
+            p = resolve_in_workspace(image_path, must_exist=True)
+        except SecurityError as e:
+            return err(str(e))
         image_bytes = p.read_bytes()
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
 

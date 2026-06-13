@@ -1,5 +1,10 @@
 # Examples
 
+!!! tip "New here? Start with the notebooks"
+    These scripts are the runnable distillation of the
+    **[interactive notebooks](../notebooks.md)** — learn the concept step by step
+    in a notebook, then ship it from `examples/`.
+
 Runnable examples tested on NVIDIA Jetson AGX Thor (132GB unified memory).
 
 ---

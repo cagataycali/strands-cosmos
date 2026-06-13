@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Shared helpers for Strands tool results and `just`-based execution.
 
 Tool return format (@tool-compatible):
@@ -18,12 +20,10 @@ Design:
 """
 from __future__ import annotations
 
-import json as _json
 import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any
 
 
 # ── ToolResult builders ──────────────────────────────────────────────────
@@ -87,6 +87,31 @@ def _find_justfile() -> Path | None:
     return f if f.is_file() else None
 
 
+# Characters that allow breaking out of `just` {{param}} interpolation into the
+# underlying shell or Python heredoc (the CWE-78 root cause). Any agent-reachable
+# argument containing these is rejected at this single chokepoint as defense in
+# depth -- agent-facing tools should additionally prefer the direct argv path
+# (see _security.safe_run) over `just`.
+_JUST_FORBIDDEN_CHARS = ("\"", "'", "`", ";", "\n", "\r", "$(", "${", "&&", "||", "|", ">", "<")
+
+
+class JustInjectionError(ValueError):
+    """Raised when a just_run argument contains shell/template metacharacters."""
+
+
+def _reject_injection(args: tuple) -> str | None:
+    """Return an error string if any arg contains a breakout metacharacter."""
+    for a in args:
+        s = str(a)
+        for bad in _JUST_FORBIDDEN_CHARS:
+            if bad in s:
+                return (
+                    f"refusing to pass argument containing {bad!r} to `just` "
+                    f"(possible command/template injection): {s[:80]!r}"
+                )
+    return None
+
+
 def just_run(
     recipe: str,
     *args: str,
@@ -100,12 +125,22 @@ def just_run(
     Returns:
         {"ok": bool, "returncode": int, "stdout": str, "stderr": str, "cmd": str}
     """
+    bad = _reject_injection(args)
+    if bad is not None:
+        return {
+            "ok": False,
+            "returncode": -1,
+            "stdout": "",
+            "stderr": bad,
+            "cmd": f"{_JUST_BIN} {recipe} <rejected>",
+        }
+
     if not shutil.which(_JUST_BIN):
         return {
             "ok": False,
             "returncode": 127,
             "stdout": "",
-            "stderr": f"`{_JUST_BIN}` not found on PATH. Install: brew install just",
+            "stderr": f"`{_JUST_BIN}` not found on PATH. It ships with strands-cosmos (pip pkg `rust-just`); reinstall with `pip install -U strands-cosmos`, or `pip install rust-just`, or `brew install just`",
             "cmd": f"{_JUST_BIN} {recipe} " + " ".join(args),
         }
 
@@ -157,12 +192,12 @@ def just_run(
 def proc_result(proc: dict, success_text: str, fail_text: str = "") -> dict:
     """Convert a just_run output into a ToolResult."""
     if proc.get("ok"):
-        tail = proc.get("stdout", "")[-1500:]
+        tail = proc.get("stdout", "")[-15000:]
         return ok(
             text=success_text + (f"\n\n--- stdout (tail) ---\n{tail}" if tail else ""),
             data=proc,
         )
-    stderr_tail = proc.get("stderr", "")[-400:]
+    stderr_tail = proc.get("stderr", "")[-4000:]
     return err(
         fail_text or f"exit {proc.get('returncode')}: {stderr_tail}",
         data=proc,
@@ -192,8 +227,8 @@ def run_proc(
         return {
             "ok": p.returncode == 0,
             "returncode": p.returncode,
-            "stdout": p.stdout[-8000:],
-            "stderr": p.stderr[-4000:],
+            "stdout": p.stdout[-80000:],
+            "stderr": p.stderr[-40000:],
             "cmd": " ".join(cmd),
         }
     except FileNotFoundError as e:

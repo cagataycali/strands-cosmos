@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just predict-generate` (Cosmos-Predict 2.5)."""
 from __future__ import annotations
 
@@ -40,6 +42,10 @@ def cosmos_predict_generate(
         checkpoint: Optional fine-tuned checkpoint.
         model_variant: text2world | video2world | action_conditioned | multiview.
         repo_dir: Override COSMOS_PREDICT_REPO.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the path to the generated video; on error ``status`` is ``"error"`` with a message.
     """
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 

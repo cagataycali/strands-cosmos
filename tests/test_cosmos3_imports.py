@@ -15,7 +15,7 @@ def test_cosmos3_reasoner_media_parsing():
 
     m = Cosmos3ReasonerModel()
     msgs = [{"role": "user", "content": [
-        {"text": "Caption: <video>https://x/y.mp4</video> and <image>https://x/z.jpg</image> please"}
+        {"text": "Caption: <video>https://example.com/y.mp4</video> and <image>https://example.com/z.jpg</image> please"}
     ]}]
     oai = m._extract_media_to_openai(msgs)
     assert len(oai) == 1

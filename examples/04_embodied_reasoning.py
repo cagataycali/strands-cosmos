@@ -1,6 +1,9 @@
 """Robot embodied reasoning — next action prediction from an image.
 
 Uses sample.png as the robot's camera view.
+
+📓 Learn-first notebook: ../notebooks/04_embodied_reasoning.ipynb
+   ("Robot Brain: Next-Action Prediction" — same concepts, explained step by step with diagrams.)
 """
 
 import os

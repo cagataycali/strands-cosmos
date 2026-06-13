@@ -1,8 +1,11 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just evaluate` — all Cosmos metrics."""
 from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result, err
+from ._security import SecurityError, validate_identifier
 
 
 VALID_METRICS = {
@@ -33,10 +36,20 @@ def cosmos_evaluate(
         gt_path: Ground-truth path (required for most).
         output_dir: JSON results destination.
         repo_dir: Override COSMOS_COOKBOOK_REPO.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the computed evaluation metrics; on error ``status`` is ``"error"`` with a message.
     """
     if metric not in VALID_METRICS:
         return err(f"unknown metric: {metric}", data={"known": sorted(VALID_METRICS)})
 
+    try:
+        pred_path = validate_identifier(pred_path, what="pred_path")
+        gt_path = validate_identifier(gt_path, what="gt_path", allow_empty=True)
+        output_dir = validate_identifier(output_dir, what="output_dir")
+    except SecurityError as e:
+        return err(str(e))
     extra_env = {"COSMOS_COOKBOOK_REPO": repo_dir} if repo_dir else None
     proc = just_run(
         "evaluate", metric, pred_path, gt_path, output_dir,

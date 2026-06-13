@@ -1,8 +1,11 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just curate` (Cosmos-Xenna data pipeline)."""
 from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result
+from ._security import SecurityError, validate_identifier
 
 
 @tool
@@ -24,7 +27,18 @@ def cosmos_curate(
         stages: "all" or comma-separated stage names.
         num_workers: Ray workers.
         repo_dir: Override COSMOS_XENNA_REPO.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the path to the curated dataset output; on error ``status`` is ``"error"`` with a message.
     """
+    try:
+        input_dir = validate_identifier(input_dir, what="input_dir")
+        output_dir = validate_identifier(output_dir, what="output_dir")
+        stages = validate_identifier(stages, what="stages")
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     extra_env = {"COSMOS_XENNA_REPO": repo_dir} if repo_dir else None
     proc = just_run(
         "curate", input_dir, output_dir, stages, str(num_workers),

@@ -2,6 +2,9 @@
 
 Demonstrates cosmos_vision_invoke as a Strands tool — callable from
 any agent (Bedrock, OpenAI, Ollama, etc.) for video/image analysis.
+
+📓 Learn-first notebook: ../notebooks/05_tool_usage.ipynb
+   ("Cosmos as Tools: Building Blocks" — same concepts, explained step by step with diagrams.)
 """
 
 import os

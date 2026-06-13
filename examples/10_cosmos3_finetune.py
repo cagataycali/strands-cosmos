@@ -12,6 +12,9 @@ Full flow (vision SFT on Cosmos3-Nano):
     2. (optional) prepare your dataset JSONL
     3. Run SFT
     4. Export trained checkpoint -> HF safetensors
+
+📓 Advanced example — no intro notebook. New here? Start with
+   ../notebooks/00_start_here.ipynb and walk through 01–07 first.
 """
 import os
 import sys

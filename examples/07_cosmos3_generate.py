@@ -5,6 +5,9 @@ Prerequisites:
 
 Note: On a single GPU, STOP the reasoner server before running the generator
 (both load a 16B model; they won't fit together on ~46GB).
+
+📓 Learn-first notebook: ../notebooks/07_cosmos3_generate.ipynb
+   ("Cosmos 3: The Generator" — same concepts, explained step by step with diagrams.)
 """
 import os
 import sys

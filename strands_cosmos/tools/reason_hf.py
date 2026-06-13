@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Cosmos-Reason2 inference via HuggingFace Transformers (full-precision)."""
 from __future__ import annotations
 
@@ -33,6 +35,10 @@ def cosmos_reason_hf(
         temperature: Sampling temperature.
         device: "auto" | "cuda" | "cpu".
         return_image: If True, return the input image in the response.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the model's text response; on error ``status`` is ``"error"`` with a message.
     """
     if not image_path and not video_path:
         return err("image_path or video_path is required")

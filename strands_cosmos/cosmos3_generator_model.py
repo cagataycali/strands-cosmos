@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """NVIDIA Cosmos 3 Generator model provider for Strands Agents.
 
 The Cosmos 3 **Generator** surface produces vision/sound/action from text,
@@ -234,7 +236,10 @@ class Cosmos3GeneratorModel(Model):
                     mode, params["num_inference_steps"], params["num_frames"])
         result = pipe(**params)
 
-        os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)
+        # Confine the (caller/LLM-supplied) output path to the workspace
+        # allow-list before creating dirs / writing bytes (CWE-22).
+        from .tools._security import resolve_output_path
+        out_path = str(resolve_output_path(out_path))
 
         # Pull video frames + optional sound from the omni pipeline output.
         video_frames = getattr(result, "video", None)
