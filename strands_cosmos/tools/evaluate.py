@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just evaluate` — all Cosmos metrics."""
 from __future__ import annotations
 
@@ -34,6 +36,10 @@ def cosmos_evaluate(
         gt_path: Ground-truth path (required for most).
         output_dir: JSON results destination.
         repo_dir: Override COSMOS_COOKBOOK_REPO.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the computed evaluation metrics; on error ``status`` is ``"error"`` with a message.
     """
     if metric not in VALID_METRICS:
         return err(f"unknown metric: {metric}", data={"known": sorted(VALID_METRICS)})

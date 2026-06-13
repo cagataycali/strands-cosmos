@@ -1,8 +1,9 @@
-"""Load an image file and embed it in the response (agent can see it).
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+"""Read an image from disk and embed it in the tool result so the agent can see it.
 
-SECURITY: ``image_path`` is LLM-controlled. It is confined to the workspace
-allow-list (CWE-22) before being read, so the agent cannot exfiltrate
-arbitrary files (e.g. ~/.ssh/id_rsa) into the conversation.
+Reads an image file from inside the project workspace and returns it as visual
+content the model can reason over. Supports PNG, JPEG, GIF, and WebP.
 """
 from __future__ import annotations
 
@@ -20,6 +21,10 @@ def image_read(image_path: str) -> dict:
 
     Args:
         image_path: Path to image on disk (inside the workspace).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the requested image embedded as visual content the model can see; on error ``status`` is ``"error"`` with a message.
     """
     try:
         p = resolve_in_workspace(image_path, must_exist=True)

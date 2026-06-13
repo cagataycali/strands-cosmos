@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just distill` (KD / DMD2)."""
 from __future__ import annotations
 
@@ -24,6 +26,10 @@ def cosmos_distill(
         method: kd | dmd2.
         model_family: transfer2_5 | predict2_5.
         num_gpus: GPUs per node.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the path to the distilled student checkpoint; on error ``status`` is ``"error"`` with a message.
     """
     if not Path(teacher_checkpoint).exists():
         return err(f"teacher checkpoint not found: {teacher_checkpoint}")

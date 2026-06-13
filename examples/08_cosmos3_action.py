@@ -9,6 +9,9 @@ Policy predicts an action chunk + rollout video from an image + instruction.
 
 Input is a JSONL spec, one line per run. This example builds an autonomous-vehicle
 forward-dynamics spec from the sample assets shipped in the cosmos repo.
+
+📓 Learn-first notebook: ../notebooks/07_cosmos3_generate.ipynb
+   ("Cosmos 3: Generator (see the mode menu)" — same concepts, explained step by step with diagrams.)
 """
 import json
 import os

@@ -1,9 +1,10 @@
-"""Video metadata + frame extraction via ffprobe/ffmpeg.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+"""Video utilities: probe metadata and extract frames via ffprobe/ffmpeg.
 
-SECURITY: These tools take LLM-controlled paths. They invoke ffprobe/ffmpeg
-*directly* via an argv list (shell=False) -- never through ``just`` recipe
-interpolation, which was a command-injection (RCE) sink (CWE-78). Input and
-output paths are confined to the workspace allow-list (CWE-22).
+``video_probe`` returns resolution / fps / duration / codec; ``video_extract_frames``
+samples frames to JPEGs. Both read and write inside the project workspace and call
+ffprobe/ffmpeg directly (no shell), so paths are handled safely.
 """
 from __future__ import annotations
 
@@ -27,6 +28,10 @@ def video_probe(video_path: str) -> dict:
 
     Args:
         video_path: Path to video file (must be inside the workspace).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the video's metadata (resolution, fps, duration, codec, frame count) as both a human summary and a ``json`` block; on error ``status`` is ``"error"`` with a message.
     """
     try:
         p = resolve_in_workspace(video_path, must_exist=True)
@@ -92,6 +97,10 @@ def video_extract_frames(
         fps: Frames/sec to extract (1.0 = every second).
         max_frames: Stop after N frames (0 = unlimited).
         return_first: Embed the first frame in the response.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the output directory, frame count, and the first/last frame paths, with the first frame embedded as an image; on error ``status`` is ``"error"`` with a message.
     """
     try:
         p = resolve_in_workspace(video_path, must_exist=True)

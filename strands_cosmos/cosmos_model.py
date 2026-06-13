@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """NVIDIA Cosmos Reason model provider for Strands Agents.
 
 Text-only inference using Cosmos-Reason2 via Hugging Face Transformers.

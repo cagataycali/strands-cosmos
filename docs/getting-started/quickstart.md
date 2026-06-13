@@ -1,5 +1,10 @@
 # Quickstart
 
+!!! tip "Prefer learning by doing?"
+    Every concept below is also an **interactive notebook** with color-coded
+    diagrams — and they run safely even without a GPU. See **[Notebooks](../notebooks.md)**,
+    starting with `notebooks/00_start_here.ipynb`.
+
 Get from zero to a running Cosmos agent in under 2 minutes.
 
 ---

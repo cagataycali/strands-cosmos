@@ -9,6 +9,9 @@ Usage:
     SHOWCASE_VIDEO=/path/to/input.mp4 python examples/09_cosmos3_showcase.py
 
 Outputs land in demo/cosmos3_showcase/. See that folder's README.md for results.
+
+📓 Learn-first notebook: ../notebooks/06_cosmos3_understand.ipynb
+   ("Cosmos 3: Reason → Generate (06 + 07)" — same concepts, explained step by step with diagrams.)
 """
 import json
 import os

@@ -2,6 +2,9 @@
 
 Captions a sample video using the vision model.
 Uses sample.mp4 from the project root.
+
+📓 Learn-first notebook: ../notebooks/02_video_caption.ipynb
+   ("Giving the Agent Eyes: Video Captioning" — same concepts, explained step by step with diagrams.)
 """
 
 import os

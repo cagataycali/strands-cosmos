@@ -1,6 +1,9 @@
 """Basic text inference with Cosmos-Reason2.
 
 Tests text-only physics reasoning — no video/image needed.
+
+📓 Learn-first notebook: ../notebooks/01_basic_text.ipynb
+   ("Your First Agent: Pure Text Reasoning" — same concepts, explained step by step with diagrams.)
 """
 
 import os

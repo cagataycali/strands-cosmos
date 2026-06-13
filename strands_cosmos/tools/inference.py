@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Cosmos-Reason2 VLM inference against TRT-Edge-LLM HTTP server."""
 from __future__ import annotations
 
@@ -35,6 +37,10 @@ def cosmos_inference(
         temperature: Sampling temperature (0.0-1.0).
         system_prompt: Optional system prompt.
         return_image: If True, include the input image in the response.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the model's text response; on error ``status`` is ``"error"`` with a message.
     """
     import os
 

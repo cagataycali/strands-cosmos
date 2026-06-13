@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just rtp-capture` — GStreamer RTP/H.264 frame capture."""
 from __future__ import annotations
 
@@ -31,11 +33,15 @@ def rtp_capture_frame(
         timeout_s: give up after N seconds.
         output_path: where to save JPEG (default: temp file).
         return_image: if True, embed JPEG bytes in the response.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the captured frame's path, with the image embedded in the result; on error ``status`` is ``"error"`` with a message.
     """
     if not output_path:
         output_path = tempfile.mktemp(suffix=".jpg", prefix="cosmos_rtp_")
 
-    # SECURITY: output_path is LLM-controlled -> confine to workspace and pass via
+    # Output_path is LLM-controlled -> confine to workspace and pass via
     # $RTP_OUTPUT env (no {{param}} interpolation, CWE-78/CWE-22). bind_ip likewise
     # flows through $RTP_BIND. Numerics stay positional (validated as ints).
     try:

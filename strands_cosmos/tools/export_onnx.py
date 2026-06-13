@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just export-llm` / `just export-visual` (x86)."""
 from __future__ import annotations
 
@@ -22,6 +24,10 @@ def cosmos_export_onnx(
         which_part: "llm" | "visual".
         dtype: Base dtype (visual only).
         quantization: e.g. "fp8" (visual only).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the path to the exported ONNX model; on error ``status`` is ``"error"`` with a message.
     """
     try:
         model_dir = validate_identifier(model_dir, what="model_dir")

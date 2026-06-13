@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Cosmos 3 extra tools — prompt upsampling, batch captioning, VideoPhy2 eval.
 
 Thin wrappers over justfile recipes (c3-upsample / c3-caption-batch /
@@ -55,6 +57,10 @@ def cosmos3_upsample_prompt(
         fps: Target FPS (t2v/i2v only).
         duration: Clip duration in whole seconds (t2v/i2v only).
         image: Conditioning image path/URL for i2v (optional).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
     if task not in ("t2v", "t2i", "i2v"):
         from ._common import err
@@ -98,8 +104,12 @@ def cosmos3_caption_batch(
         workers: Max concurrent requests to the server.
         template: Optional custom prompt-template path. Empty => auto-resolve the
             built-in video_captioner.txt (handles the upstream default-path bug).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
-    # SECURITY: video/out/template are LLM-controlled paths -> confine to the
+    # Video/out/template are LLM-controlled paths -> confine to the
     # workspace and pass via env (no {{param}} interpolation, CWE-78/CWE-22).
     from ._common import err
     try:
@@ -147,8 +157,12 @@ def cosmos3_eval_videophy2(
         batch_size: Per-rank generation batch size.
         max_new_tokens: Max new tokens per generation.
         nproc: GPUs for torchrun (1 = single-process on cuda:0).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
-    # SECURITY: results_dir/hf_ckpt/val_root are LLM-controlled paths -> confine
+    # Results_dir/hf_ckpt/val_root are LLM-controlled paths -> confine
     # to the workspace and pass via env (no {{param}} interpolation, CWE-78/CWE-22).
     from ._common import err
     try:

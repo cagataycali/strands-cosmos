@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just download` / `just download-dataset`."""
 from __future__ import annotations
 
@@ -24,8 +26,12 @@ def cosmos_model_download(
         name: Shortcut name OR full HF repo id.
         local_dir: Where to store files (optional).
         kind: "model" | "dataset".
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the local path the model or dataset was downloaded to; on error ``status`` is ``"error"`` with a message.
     """
-    # SECURITY: name (HF id) + local_dir are interpolated into a shell-line recipe;
+    # Name (HF id) + local_dir are interpolated into a shell-line recipe;
     # validate charset so they cannot break out (CWE-78 structural defense).
     try:
         name = validate_identifier(name, what="model/dataset name")

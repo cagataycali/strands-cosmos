@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """NVIDIA Cosmos 3 Generator model provider for Strands Agents.
 
 The Cosmos 3 **Generator** surface produces vision/sound/action from text,

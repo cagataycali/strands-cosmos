@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just transfer-generate` (Cosmos-Transfer 2.5)."""
 from __future__ import annotations
 
@@ -36,6 +38,10 @@ def cosmos_transfer_generate(
         control_weights: JSON string of weights for control='multi' (e.g. '{"edge":0.5,"depth":0.5}').
         guidance_scale / num_steps / seed: Diffusion params.
         repo_dir: Override COSMOS_TRANSFER_REPO.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the path to the generated (transformed) video; on error ``status`` is ``"error"`` with a message.
     """
     if control not in {"edge", "depth", "seg", "vis", "multi"}:
         return err(f"control must be one of edge/depth/seg/vis/multi, got {control!r}")

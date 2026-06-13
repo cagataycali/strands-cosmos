@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """NVIDIA Cosmos Reason Vision model provider for Strands Agents.
 
 Multimodal inference (video + image + text) using Cosmos-Reason2 via Transformers.
@@ -43,12 +45,11 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_media_ref(ref: str):
-    """Validate an LLM-supplied <image>/<video> media reference.
+    """Validate an ``<image>``/``<video>`` media reference from the model.
 
-    Returns a safe path/URL string, or None to drop an invalid reference.
-    Local paths are confined to the workspace allow-list; remote URLs are
-    checked against the SSRF policy. Prevents arbitrary file read into the
-    HF media pipeline (CWE-22) and SSRF (CWE-918).
+    Returns a safe path/URL string, or ``None`` to drop an invalid reference.
+    Local paths are confined to the project workspace and remote URLs are checked
+    against the allowed-host policy before they reach the media pipeline.
     """
     if not ref:
         return None

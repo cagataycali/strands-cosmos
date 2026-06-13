@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Cosmos 3 post-training (SFT) tools — thin wrappers over justfile `c3-train-*` recipes.
 
 Supervised fine-tuning of Cosmos 3 models via the NVIDIA Cosmos Framework
@@ -31,7 +33,12 @@ _QUICK_TIMEOUT = 60 * 10          # 10m: listing / config show / dataset prep
 
 @tool
 def cosmos3_train_recipes() -> dict:
-    """List the Cosmos 3 SFT recipes + launch shells available in the framework checkout."""
+    """List the Cosmos 3 SFT recipes + launch shells available in the framework checkout.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
+    """
     proc = just_run("c3-train-recipes", timeout_s=_QUICK_TIMEOUT)
     return proc_result(proc, "cosmos3 SFT recipes:", "c3-train-recipes failed")
 
@@ -43,6 +50,10 @@ def cosmos3_train_show(recipe: str = "vision_sft_nano") -> dict:
     Args:
         recipe: SFT recipe name (e.g. vision_sft_nano, vision_sft_super,
             llava_ov, videophy2_nano).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
     try:
         recipe = validate_identifier(recipe, what="recipe")
@@ -60,6 +71,10 @@ def cosmos3_train_convert(checkpoint: str = "nvidia/Cosmos3-Nano", out: str = ""
     Args:
         checkpoint: Catalog name / HF id (e.g. Cosmos3-Nano, Cosmos3-Super).
         out: Output DCP dir (default examples/checkpoints/<name>).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
     try:
         checkpoint = validate_identifier(checkpoint, what="checkpoint")
@@ -81,6 +96,10 @@ def cosmos3_train_convert_vlm(
     Args:
         checkpoint: Base checkpoint (e.g. Cosmos3-Nano).
         out: Output VLM safetensors dir.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
     try:
         checkpoint = validate_identifier(checkpoint, what="checkpoint")
@@ -99,6 +118,10 @@ def cosmos3_train_prep_dataset(captions: str, out: str) -> dict:
     Args:
         captions: Path to the input captions JSONL.
         out: Path to write the SFT dataset JSONL.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
     try:
         captions = validate_identifier(captions, what="captions")
@@ -129,6 +152,10 @@ def cosmos3_train(
         dataset: Override DATASET_PATH (default: recipe's examples/data path).
         checkpoint: Override BASE_CHECKPOINT_PATH (the DCP dir from convert step).
         overrides: Space-separated Hydra tail overrides applied after `--`.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
     try:
         recipe = validate_identifier(recipe, what="recipe")
@@ -152,6 +179,10 @@ def cosmos3_train_export(run_dir: str, out: str = "") -> dict:
     Args:
         run_dir: Training run dir ($IMAGINAIRE_OUTPUT_ROOT/<project>/<group>/<name>).
         out: Output dir (default <run_dir>/hf_export).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the tool's output; on error ``status`` is ``"error"`` with a message.
     """
     try:
         run_dir = validate_identifier(run_dir, what="run_dir")

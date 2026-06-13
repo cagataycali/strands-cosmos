@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "strands-cosmos"
 dynamic = ["version"]
-description = "NVIDIA Cosmos Reason VLM provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence"
+description = "NVIDIA Cosmos provider for Strands Agents - physical AI reasoning, video understanding, and embodied intelligence"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Cagatay Cali", email = "cagataycali@icloud.com"}
+    {name = "Amazon Web Services"}
 ]
 keywords = [
     "strands",
@@ -20,6 +20,7 @@ keywords = [
     "vlm",
     "video",
     "reasoning",
+    "policy",
     "physical-ai",
     "robotics",
     "embodied",
@@ -41,6 +42,10 @@ classifiers = [
 
 dependencies = [
     "strands-agents",
+    # `just` recipe runner shipped as a pip wheel (platform binaries) so
+    # `pip install strands-cosmos` puts `just` on PATH with no system install.
+    # All pipelines flow through the justfile; this guarantees it Just Works.
+    "rust-just>=1.40",
     "transformers>=4.57.0,<5.3.0",
     "accelerate>=1.12.0,<2.0.0",
     "torch>=2.0.0,<3.0.0",
@@ -57,13 +62,13 @@ dependencies = [
 [project.optional-dependencies]
 vllm = [
     "vllm>=0.11.0,<1.0.0",
-    "openai",
+    "strands-agents[openai]",
 ]
 # Cosmos 3 reasoner client (talks to a local vLLM server). The heavier
 # generator/action backends (vllm-cosmos3, diffusers, Cosmos Framework) are
 # installed into dedicated uv venvs via the justfile `c3-setup-*` recipes.
 cosmos3 = [
-    "openai>=1.0.0",
+    "strands-agents[openai]",
 ]
 # Cosmos 3 generator (in-process Diffusers): text/image -> image/video/sound.
 # diffusers must be the dev build (Cosmos3OmniPipeline); cosmos_guardrail is the
@@ -93,7 +98,7 @@ dev = [
 all = [
     "strands-agents-tools",
     "vllm>=0.11.0",
-    "openai>=1.0.0",
+    "strands-agents[openai]",
     "diffusers>=0.36,<1.0",
     "cosmos_guardrail",
     "soundfile",

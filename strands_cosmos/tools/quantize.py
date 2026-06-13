@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just quantize` — FP8/INT8/INT4 quantization (x86)."""
 from __future__ import annotations
 
@@ -20,6 +22,10 @@ def cosmos_quantize(
         output_dir: Where to write quantized weights.
         dtype: Base precision (fp16 | bf16).
         quantization: Target quantization (fp8 | int8 | int4).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the path to the quantized model weights; on error ``status`` is ``"error"`` with a message.
     """
     try:
         model_dir = validate_identifier(model_dir, what="model_dir")

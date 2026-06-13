@@ -1,6 +1,9 @@
 """Autonomous driving analysis with chain-of-thought reasoning.
 
 Uses sample.mp4 as a dashcam video for safety analysis.
+
+📓 Learn-first notebook: ../notebooks/03_driving_analysis.ipynb
+   ("Chain-of-Thought for Driving Safety" — same concepts, explained step by step with diagrams.)
 """
 
 import os

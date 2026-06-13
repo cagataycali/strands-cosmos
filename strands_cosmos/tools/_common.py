@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Shared helpers for Strands tool results and `just`-based execution.
 
 Tool return format (@tool-compatible):
@@ -138,7 +140,7 @@ def just_run(
             "ok": False,
             "returncode": 127,
             "stdout": "",
-            "stderr": f"`{_JUST_BIN}` not found on PATH. Install: brew install just",
+            "stderr": f"`{_JUST_BIN}` not found on PATH. It ships with strands-cosmos (pip pkg `rust-just`); reinstall with `pip install -U strands-cosmos`, or `pip install rust-just`, or `brew install just`",
             "cmd": f"{_JUST_BIN} {recipe} " + " ".join(args),
         }
 
@@ -190,12 +192,12 @@ def just_run(
 def proc_result(proc: dict, success_text: str, fail_text: str = "") -> dict:
     """Convert a just_run output into a ToolResult."""
     if proc.get("ok"):
-        tail = proc.get("stdout", "")[-1500:]
+        tail = proc.get("stdout", "")[-15000:]
         return ok(
             text=success_text + (f"\n\n--- stdout (tail) ---\n{tail}" if tail else ""),
             data=proc,
         )
-    stderr_tail = proc.get("stderr", "")[-400:]
+    stderr_tail = proc.get("stderr", "")[-4000:]
     return err(
         fail_text or f"exit {proc.get('returncode')}: {stderr_tail}",
         data=proc,
@@ -225,8 +227,8 @@ def run_proc(
         return {
             "ok": p.returncode == 0,
             "returncode": p.returncode,
-            "stdout": p.stdout[-8000:],
-            "stderr": p.stderr[-4000:],
+            "stdout": p.stdout[-80000:],
+            "stderr": p.stderr[-40000:],
             "cmd": " ".join(cmd),
         }
     except FileNotFoundError as e:

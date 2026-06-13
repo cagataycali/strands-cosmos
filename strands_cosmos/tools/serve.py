@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Wrapper around `just serve-*` recipes (TRT-Edge-LLM server)."""
 from __future__ import annotations
 
@@ -22,6 +24,10 @@ def cosmos_serve(
         llm_engine_dir / visual_engine_dir: required for start/restart.
         port / host: bind address for start/restart.
         lines: number of log lines (for action=logs).
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the inference server's start/stop/status output; on error ``status`` is ``"error"`` with a message.
     """
     try:
         if llm_engine_dir:

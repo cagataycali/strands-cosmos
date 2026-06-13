@@ -1,15 +1,15 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Security primitives for agent-reachable Cosmos tools.
 
 Why this module exists
 ----------------------
-Tool arguments originate from LLM output and are therefore *untrusted*
-(prompt injection, poisoned upstream content, model misalignment). The
-historical design routed those arguments through ``just`` recipe ``{{param}}``
-interpolation, which is text templating -- a quote, triple-quote, or semicolon
-in a value broke out of the recipe and executed attacker-controlled
-shell/Python (CWE-78).
+Tool arguments come from model output and are treated as untrusted input. To
+keep them safe, the tools never interpolate those values into shell or ``just``
+recipe templates; instead they go through the helpers below, which validate and
+confine every path, URL, and identifier before it is used.
 
-This module provides the building blocks for the structural fix:
+This module provides the building blocks:
 
   * ``safe_run``            -- execute a binary via an argv list (shell=False,
                               no string interpolation, never via ``just``).
@@ -232,11 +232,11 @@ _IDENT_RE = _re.compile(r"^[A-Za-z0-9~./][A-Za-z0-9 ._/@:+=-]{0,1024}$")
 
 
 def validate_identifier(value: str, *, what: str = "value", allow_empty: bool = False) -> str:
-    """Validate a model/dataset name, dtype, or recipe id (no metacharacters).
+    """Validate a model/dataset name, dtype, or recipe id contains only safe characters.
 
-    These values are interpolated positionally into shell-line `just` recipes,
-    so they must not contain quotes, whitespace, or shell/template
-    metacharacters. Raises ``SecurityError`` on violation (CWE-78 defense).
+    These values may be passed positionally into ``just`` recipes, so they must
+    not contain quotes, whitespace, or shell/template metacharacters. Raises
+    ``SecurityError`` if the value is unsafe.
     """
     if value is None or str(value) == "":
         if allow_empty:

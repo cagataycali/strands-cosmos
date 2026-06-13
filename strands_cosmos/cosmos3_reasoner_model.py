@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """NVIDIA Cosmos 3 Reasoner model provider for Strands Agents.
 
 Cosmos 3 is an omnimodal world model. The **Reasoner** surface produces text
@@ -108,11 +110,9 @@ TASK_PROMPTS = {
 def _media_to_url(path_or_url: str) -> str:
     """Resolve a media reference to a URL the vLLM server accepts.
 
-    - http(s):// URLs pass through (validated against the SSRF allow-list).
-    - Local files are confined to the workspace allow-list, then encoded as a
-      base64 data URI. The ``file://`` fallback is intentionally removed: it
-      granted a server started with ``--allowed-local-media-path /`` arbitrary
-      local file read (CWE-22).
+    ``http(s)://`` URLs are validated and passed through; local files are
+    confined to the project workspace and encoded as a base64 data URI (no
+    ``file://`` fallback, so the server cannot read arbitrary local paths).
     """
     from .tools._security import (
         resolve_in_workspace,

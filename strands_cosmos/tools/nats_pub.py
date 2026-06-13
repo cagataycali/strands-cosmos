@@ -1,13 +1,10 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Publish a JSON payload to a NATS subject.
 
-SECURITY: ``subject`` and ``payload`` are LLM-controlled. Previously they were
-interpolated into a shebang-bash ``just`` recipe (RCE via quote breakout,
-CWE-78) and the subject was unrestricted (could hit system topics). Now:
-
-  * the ``nats`` CLI is invoked *directly* via an argv list (shell=False) with
-    the payload passed on stdin -- no shell/template layer;
-  * the subject is confined to an allow-listed namespace (COSMOS_NATS_NAMESPACE)
-    and rejected if it contains wildcards/whitespace.
+Sends a message to a NATS messaging server via the ``nats`` CLI. The subject is
+confined to a configurable namespace (``COSMOS_NATS_NAMESPACE``) and the payload
+is delivered on stdin, so it integrates cleanly with downstream Cosmos services.
 """
 from __future__ import annotations
 
@@ -35,6 +32,10 @@ def nats_publish(
         subject: NATS subject (e.g. "perception.vlm").
         payload: JSON string payload.
         servers: NATS URL(s). Default: NATS_URL env or nats://127.0.0.1:4222.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries confirmation that the payload was published to the subject; on error ``status`` is ``"error"`` with a message.
     """
     # Validate subject namespace (rejects system topics, wildcards, injection).
     try:

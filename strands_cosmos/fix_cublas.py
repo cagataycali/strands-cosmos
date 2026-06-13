@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Fix CUBLAS on NVIDIA Jetson (Thor, Orin, etc.) for PyTorch.
 
 PyTorch's pip-bundled libcublas.so may be incompatible with Jetson's GPU architecture

@@ -1,11 +1,10 @@
-"""Wrapper around `just post-train-*` recipes.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+"""Post-training (SFT / LoRA / RL) for Cosmos models via the ``just`` workflow.
 
-SECURITY: ``config_path`` is LLM-controlled and is interpolated positionally
-into the post-train recipes (``--config "{{config}}"``). It is therefore
-confined to the workspace allow-list (CWE-22) AND validated to carry no
-shell/`just`-template metacharacters (CWE-78) before it reaches ``just``.
-``model_family``/``strategy`` are constrained to fixed enums; ``num_gpus`` is
-coerced to int.
+Launches Cosmos-Reason2, Predict 2.5, or Transfer 2.5 fine-tuning jobs. Training
+configs are read from inside the project workspace; the model family, strategy,
+and GPU count are validated before the job is dispatched.
 """
 from __future__ import annotations
 
@@ -40,6 +39,10 @@ def cosmos_post_train(
         strategy: full | lora | rl (rl is reason2 only).
         num_gpus: GPUs per node (predict/transfer only).
         dry_run: If True, just preview the recipe name.
+
+    Returns:
+        A Strands tool-result dict ``{"status", "content"}``. On success the
+        content carries the training job's launch output (or the recipe preview when ``dry_run`` is set); on error ``status`` is ``"error"`` with a message.
     """
     # Constrain enums first (positionally interpolated, CWE-78 defense).
     if model_family not in _FAMILIES:
