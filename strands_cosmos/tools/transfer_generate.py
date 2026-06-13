@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 from strands import tool
+from ._security import SecurityError, validate_identifier
 from ._common import just_run, proc_result, err
 
 
@@ -68,6 +69,9 @@ def cosmos_transfer_generate(
 
     extra_env = {"COSMOS_TRANSFER_REPO": repo_dir} if repo_dir else None
     cli_control = "edge" if control == "multi" else control
+    # cli_control is already constrained to the control enum above; assert the
+    # charset explicitly so the no-interpolation gate can prove it (CWE-78).
+    cli_control = validate_identifier(cli_control, what="control")
     proc = just_run("transfer-generate", tmp.name, cli_control,
                     timeout_s=60 * 60 * 3, extra_env=extra_env)
     return proc_result(

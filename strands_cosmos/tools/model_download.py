@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result, err
+from ._security import SecurityError, validate_identifier
 
 
 @tool
@@ -24,6 +25,13 @@ def cosmos_model_download(
         local_dir: Where to store files (optional).
         kind: "model" | "dataset".
     """
+    # SECURITY: name (HF id) + local_dir are interpolated into a shell-line recipe;
+    # validate charset so they cannot break out (CWE-78 structural defense).
+    try:
+        name = validate_identifier(name, what="model/dataset name")
+        local_dir = validate_identifier(local_dir, what="local_dir", allow_empty=True)
+    except SecurityError as e:
+        return err(str(e))
     if kind == "model":
         proc = just_run("download", name, local_dir, timeout_s=60 * 60 * 4)
     elif kind == "dataset":

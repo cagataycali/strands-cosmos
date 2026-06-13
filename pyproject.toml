@@ -42,13 +42,13 @@ classifiers = [
 dependencies = [
     "strands-agents",
     "transformers>=4.57.0,<5.3.0",
-    "accelerate>=1.12.0",
-    "torch>=2.0.0",
+    "accelerate>=1.12.0,<2.0.0",
+    "torch>=2.0.0,<3.0.0",
     "torchvision",
-    "qwen-vl-utils>=0.0.14",
-    "pillow>=10.0.0",
-    "pyyaml>=6.0",
-    "av>=16.0.0",
+    "qwen-vl-utils>=0.0.14,<1.0.0",
+    "pillow>=10.0.0,<13.0.0",
+    "pyyaml>=6.0,<7.0",
+    "av>=16.0.0,<17.0.0",
     # transformers 5.x video processor decodes with torchcodec and otherwise
     # falls back to torchvision, whose io.read_video was removed in >=0.27.
     "torchcodec; python_version >= \"3.10\"",
@@ -56,7 +56,7 @@ dependencies = [
 
 [project.optional-dependencies]
 vllm = [
-    "vllm>=0.11.0",
+    "vllm>=0.11.0,<1.0.0",
     "openai",
 ]
 # Cosmos 3 reasoner client (talks to a local vLLM server). The heavier
@@ -73,7 +73,7 @@ cosmos3-gen = [
     # Cosmos3OmniPipeline. PyPI forbids direct-URL deps in published metadata, so
     # we require plain `diffusers` here and pin the dev build at install time via
     # `just c3-setup-gen` (or `pip install -U "git+https://github.com/huggingface/diffusers.git"`).
-    "diffusers>=0.36",
+    "diffusers>=0.36,<1.0",
     "cosmos_guardrail",
     "soundfile",
     "imageio",
@@ -94,7 +94,7 @@ all = [
     "strands-agents-tools",
     "vllm>=0.11.0",
     "openai>=1.0.0",
-    "diffusers>=0.36",
+    "diffusers>=0.36,<1.0",
     "cosmos_guardrail",
     "soundfile",
     "imageio",

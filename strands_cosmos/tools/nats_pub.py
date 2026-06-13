@@ -1,11 +1,23 @@
-"""Wrapper around `just nats-publish`."""
+"""Publish a JSON payload to a NATS subject.
+
+SECURITY: ``subject`` and ``payload`` are LLM-controlled. Previously they were
+interpolated into a shebang-bash ``just`` recipe (RCE via quote breakout,
+CWE-78) and the subject was unrestricted (could hit system topics). Now:
+
+  * the ``nats`` CLI is invoked *directly* via an argv list (shell=False) with
+    the payload passed on stdin -- no shell/template layer;
+  * the subject is confined to an allow-listed namespace (COSMOS_NATS_NAMESPACE)
+    and rejected if it contains wildcards/whitespace.
+"""
 from __future__ import annotations
 
 import json
 import os
 
 from strands import tool
-from ._common import just_run, ok, err
+
+from ._common import err, ok
+from ._security import SecurityError, safe_run, validate_nats_subject
 
 
 @tool
@@ -14,27 +26,43 @@ def nats_publish(
     payload: str,
     servers: str = "",
 ) -> dict:
-    """Publish a JSON payload to a NATS subject via `just nats-publish`.
+    """Publish a JSON payload to a NATS subject.
+
+    The subject must fall within an allowed namespace (default: cosmos.*,
+    agent.*, perception.*; configurable via COSMOS_NATS_NAMESPACE).
 
     Args:
         subject: NATS subject (e.g. "perception.vlm").
         payload: JSON string payload.
         servers: NATS URL(s). Default: NATS_URL env or nats://127.0.0.1:4222.
     """
-    # Validate JSON
+    # Validate subject namespace (rejects system topics, wildcards, injection).
+    try:
+        subject = validate_nats_subject(subject)
+    except SecurityError as e:
+        return err(str(e))
+
+    # Validate JSON payload.
     try:
         json.loads(payload)
     except json.JSONDecodeError as e:
         return err(f"payload is not valid JSON: {e}")
 
-    extra_env = {"NATS_URL": servers} if servers else None
-    proc = just_run("nats-publish", subject, payload,
-                    timeout_s=10, extra_env=extra_env)
+    nats_url = servers or os.getenv("NATS_URL", "nats://127.0.0.1:4222")
+
+    # Direct argv invocation: `nats pub <subject> --server <url>` with the
+    # payload streamed on stdin. No shell, no interpolation.
+    proc = safe_run(
+        ["nats", "pub", subject, "--server", nats_url],
+        timeout_s=10,
+        input_bytes=payload.encode("utf-8"),
+    )
     if not proc.get("ok"):
-        return err(f"NATS publish failed: {proc.get('stderr', '')[:200]}",
-                   data={"subject": subject, "cmd": proc.get("cmd")})
+        return err(
+            f"NATS publish failed: {proc.get('stderr', '')[:200]}",
+            data={"subject": subject, "cmd": proc.get("cmd")},
+        )
     return ok(
-        f"📡 published to {subject} ({len(payload)}B)",
-        data={"subject": subject, "bytes_sent": len(payload),
-              "servers": servers or os.getenv("NATS_URL", "nats://127.0.0.1:4222")},
+        f"\U0001F4E1 published to {subject} ({len(payload)}B)",
+        data={"subject": subject, "bytes_sent": len(payload), "servers": nats_url},
     )

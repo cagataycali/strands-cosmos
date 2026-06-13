@@ -41,6 +41,26 @@ from typing_extensions import TypedDict, Unpack, override
 
 logger = logging.getLogger(__name__)
 
+
+def _resolve_media_ref(ref: str):
+    """Validate an LLM-supplied <image>/<video> media reference.
+
+    Returns a safe path/URL string, or None to drop an invalid reference.
+    Local paths are confined to the workspace allow-list; remote URLs are
+    checked against the SSRF policy. Prevents arbitrary file read into the
+    HF media pipeline (CWE-22) and SSRF (CWE-918).
+    """
+    if not ref:
+        return None
+    try:
+        from .tools._security import resolve_in_workspace, validate_url
+        if ref.startswith(("http://", "https://")):
+            return validate_url(ref, allow_public=True)
+        return str(resolve_in_workspace(ref, must_exist=True))
+    except Exception as _e:  # SecurityError or anything unexpected -> drop
+        logger.warning("dropping unsafe media reference %r: %s", ref, _e)
+        return None
+
 DEFAULT_MODEL = "nvidia/Cosmos-Reason2-2B"
 
 # Cosmos-Reason2 vision constants
@@ -210,7 +230,6 @@ class CosmosVisionModel(Model):
                 if "image" in content:
                     img_data = content["image"]
                     if "format" in img_data and "source" in img_data:
-                        import base64
                         import tempfile
 
                         source = img_data["source"]
@@ -231,18 +250,25 @@ class CosmosVisionModel(Model):
                 elif "text" in content:
                     text_content = content["text"]
 
-                    # Extract <image>path</image> tags
+                    # Extract <image>path</image> tags. Paths are LLM-controlled,
+                    # so confine each to the workspace allow-list before handing it
+                    # to the HF media-loading pipeline (CWE-22). Remote URLs are
+                    # validated against the SSRF policy.
                     for img_path in re.findall(r"<image>(.*?)</image>", text_content):
-                        img_path = img_path.strip()
-                        images.append(img_path)
-                        user_content.append({"type": "image", "image": img_path})
+                        resolved = _resolve_media_ref(img_path.strip())
+                        if resolved is None:
+                            continue
+                        images.append(resolved)
+                        user_content.append({"type": "image", "image": resolved})
                     text_content = re.sub(r"<image>.*?</image>", "", text_content)
 
-                    # Extract <video>path</video> tags
+                    # Extract <video>path</video> tags (same containment).
                     for vid_path in re.findall(r"<video>(.*?)</video>", text_content):
-                        vid_path = vid_path.strip()
-                        videos.append(vid_path)
-                        user_content.append({"type": "video", "video": vid_path})
+                        resolved = _resolve_media_ref(vid_path.strip())
+                        if resolved is None:
+                            continue
+                        videos.append(resolved)
+                        user_content.append({"type": "video", "video": resolved})
                     text_content = re.sub(r"<video>.*?</video>", "", text_content)
 
                     cleaned = text_content.strip()

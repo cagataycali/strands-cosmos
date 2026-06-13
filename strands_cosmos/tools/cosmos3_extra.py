@@ -13,6 +13,12 @@ from __future__ import annotations
 
 from strands import tool
 
+from ._security import (
+    SecurityError,
+    resolve_in_workspace,
+    resolve_output_path,
+)
+
 from ._common import just_run, proc_result
 
 _UPSAMPLE_TIMEOUT = 60 * 10     # 10m: single LLM call (max_tokens=20000)
@@ -53,10 +59,20 @@ def cosmos3_upsample_prompt(
     if task not in ("t2v", "t2i", "i2v"):
         from ._common import err
         return err("task must be one of: t2v, t2i, i2v")
+    # `aspect` is still positionally interpolated into the recipe ({{aspect}});
+    # constrain it to the N,N format so it can carry no shell/template
+    # metacharacters (CWE-78 defense for the one remaining positional free-text).
+    import re as _re
+    if not _re.fullmatch(r"\d{1,3},\d{1,3}", str(aspect)):
+        from ._common import err
+        return err("aspect must look like 'W,H' (e.g. '16,9')")
+    # description/image are LLM-controlled free-text/paths -> pass via env vars
+    # (C3_UP_DESC/C3_UP_IMAGE), never as positional {{param}} interpolation (CWE-78).
     proc = just_run(
-        "c3-upsample", description, task, str(port), aspect, str(width),
-        str(height), str(fps), str(duration), image,
+        "c3-upsample", task, str(port), aspect, str(width),
+        str(height), str(fps), str(duration),
         timeout_s=_UPSAMPLE_TIMEOUT,
+        extra_env={"C3_UP_DESC": str(description), "C3_UP_IMAGE": str(image or "")},
     )
     return proc_result(proc, "cosmos3 upsampled prompt:", "c3-upsample failed")
 
@@ -83,11 +99,25 @@ def cosmos3_caption_batch(
         template: Optional custom prompt-template path. Empty => auto-resolve the
             built-in video_captioner.txt (handles the upstream default-path bug).
     """
+    # SECURITY: video/out/template are LLM-controlled paths -> confine to the
+    # workspace and pass via env (no {{param}} interpolation, CWE-78/CWE-22).
+    from ._common import err
+    try:
+        video_p = str(resolve_in_workspace(video, must_exist=True))
+        out_p = str(resolve_output_path(out))
+        tmpl_p = str(resolve_in_workspace(template, must_exist=True)) if template else ""
+    except SecurityError as e:
+        return err(str(e))
     proc = just_run(
-        "c3-caption-batch", video, out, str(port), str(workers), template,
+        "c3-caption-batch", str(int(port)), str(int(workers)),
         timeout_s=_CAPTION_TIMEOUT,
+        extra_env={
+            "C3_CAP_VIDEO": video_p,
+            "C3_CAP_OUT": out_p,
+            "C3_CAP_TEMPLATE": tmpl_p,
+        },
     )
-    return proc_result(proc, "cosmos3 batch captions -> " + out, "c3-caption-batch failed")
+    return proc_result(proc, "cosmos3 batch captions -> " + out_p, "c3-caption-batch failed")
 
 
 @tool
@@ -118,12 +148,26 @@ def cosmos3_eval_videophy2(
         max_new_tokens: Max new tokens per generation.
         nproc: GPUs for torchrun (1 = single-process on cuda:0).
     """
+    # SECURITY: results_dir/hf_ckpt/val_root are LLM-controlled paths -> confine
+    # to the workspace and pass via env (no {{param}} interpolation, CWE-78/CWE-22).
+    from ._common import err
+    try:
+        results_p = str(resolve_output_path(results_dir))
+        hf_p = str(resolve_in_workspace(hf_ckpt, must_exist=True)) if hf_ckpt else ""
+        val_p = str(resolve_in_workspace(val_root, must_exist=True)) if val_root else ""
+    except SecurityError as e:
+        return err(str(e))
     proc = just_run(
-        "c3-eval-videophy2", results_dir, hf_ckpt, val_root,
-        str(batch_size), str(max_new_tokens), str(nproc),
+        "c3-eval-videophy2",
+        str(int(batch_size)), str(int(max_new_tokens)), str(int(nproc)),
         timeout_s=_EVAL_TIMEOUT,
+        extra_env={
+            "C3_EVAL_RESULTS": results_p,
+            "C3_EVAL_HF_CKPT": hf_p,
+            "C3_EVAL_VAL_ROOT": val_p,
+        },
     )
     return proc_result(
-        proc, "cosmos3 videophy2 eval -> " + results_dir + "/summary.json",
+        proc, "cosmos3 videophy2 eval -> " + results_p + "/summary.json",
         "c3-eval-videophy2 failed",
     )

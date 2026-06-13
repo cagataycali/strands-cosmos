@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result
+from ._security import SecurityError, validate_identifier
 
 
 @tool
@@ -20,6 +21,14 @@ def cosmos_quantize(
         dtype: Base precision (fp16 | bf16).
         quantization: Target quantization (fp8 | int8 | int4).
     """
+    try:
+        model_dir = validate_identifier(model_dir, what="model_dir")
+        output_dir = validate_identifier(output_dir, what="output_dir")
+        dtype = validate_identifier(dtype, what="dtype")
+        quantization = validate_identifier(quantization, what="quantization", allow_empty=True)
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     proc = just_run("quantize", model_dir, output_dir, dtype, quantization, timeout_s=60 * 60 * 3)
     return proc_result(
         proc,

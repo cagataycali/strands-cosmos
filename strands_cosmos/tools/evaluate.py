@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result, err
+from ._security import SecurityError, validate_identifier
 
 
 VALID_METRICS = {
@@ -37,6 +38,12 @@ def cosmos_evaluate(
     if metric not in VALID_METRICS:
         return err(f"unknown metric: {metric}", data={"known": sorted(VALID_METRICS)})
 
+    try:
+        pred_path = validate_identifier(pred_path, what="pred_path")
+        gt_path = validate_identifier(gt_path, what="gt_path", allow_empty=True)
+        output_dir = validate_identifier(output_dir, what="output_dir")
+    except SecurityError as e:
+        return err(str(e))
     extra_env = {"COSMOS_COOKBOOK_REPO": repo_dir} if repo_dir else None
     proc = just_run(
         "evaluate", metric, pred_path, gt_path, output_dir,

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from strands import tool
 from ._common import just_run, proc_result, err
+from ._security import SecurityError, validate_identifier
 
 
 @tool
@@ -30,6 +31,12 @@ def cosmos_distill(
         return err(f"method must be 'kd' or 'dmd2', got {method!r}")
     if model_family not in {"transfer2_5", "predict2_5"}:
         return err(f"model_family must be transfer2_5 or predict2_5, got {model_family!r}")
+
+    try:
+        teacher_checkpoint = validate_identifier(teacher_checkpoint, what="teacher_checkpoint")
+        student_output = validate_identifier(student_output, what="student_output")
+    except SecurityError as e:
+        return err(str(e))
 
     Path(student_output).parent.mkdir(parents=True, exist_ok=True)
 

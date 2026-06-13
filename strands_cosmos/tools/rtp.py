@@ -6,6 +6,7 @@ from pathlib import Path
 
 from strands import tool
 from ._common import just_run, ok, err
+from ._security import SecurityError, resolve_output_path
 
 
 @tool
@@ -34,11 +35,19 @@ def rtp_capture_frame(
     if not output_path:
         output_path = tempfile.mktemp(suffix=".jpg", prefix="cosmos_rtp_")
 
+    # SECURITY: output_path is LLM-controlled -> confine to workspace and pass via
+    # $RTP_OUTPUT env (no {{param}} interpolation, CWE-78/CWE-22). bind_ip likewise
+    # flows through $RTP_BIND. Numerics stay positional (validated as ints).
+    try:
+        output_path = str(resolve_output_path(output_path))
+    except SecurityError as e:
+        return err(str(e))
+
     proc = just_run(
         "rtp-capture",
-        str(port), output_path, str(width), str(height), str(timeout_s),
+        str(int(port)), str(int(width)), str(int(height)), str(int(timeout_s)),
         timeout_s=timeout_s + 10,
-        extra_env={"RTP_BIND": bind_ip},
+        extra_env={"RTP_BIND": str(bind_ip), "RTP_OUTPUT": output_path},
     )
 
     p = Path(output_path)

@@ -1,36 +1,52 @@
-"""Wrappers around `just video-probe` / `just video-frames`."""
+"""Video metadata + frame extraction via ffprobe/ffmpeg.
+
+SECURITY: These tools take LLM-controlled paths. They invoke ffprobe/ffmpeg
+*directly* via an argv list (shell=False) -- never through ``just`` recipe
+interpolation, which was a command-injection (RCE) sink (CWE-78). Input and
+output paths are confined to the workspace allow-list (CWE-22).
+"""
 from __future__ import annotations
 
 import json
 import tempfile
-from pathlib import Path
 
 from strands import tool
-from ._common import just_run, ok, err
+
+from ._common import err, ok
+from ._security import (
+    SecurityError,
+    resolve_in_workspace,
+    resolve_output_path,
+    safe_run,
+)
 
 
 @tool
 def video_probe(video_path: str) -> dict:
-    """Get video metadata via `just video-probe` (ffprobe JSON).
+    """Get video metadata via ffprobe (JSON).
 
     Args:
-        video_path: Path to video file.
+        video_path: Path to video file (must be inside the workspace).
     """
-    p = Path(video_path).expanduser()
-    if not p.exists():
-        return err(f"video not found: {p}")
+    try:
+        p = resolve_in_workspace(video_path, must_exist=True)
+    except SecurityError as e:
+        return err(str(e))
 
-    proc = just_run("video-probe", str(p), timeout_s=30)
+    proc = safe_run(
+        [
+            "ffprobe", "-v", "error", "-print_format", "json",
+            "-show_format", "-show_streams", str(p),
+        ],
+        timeout_s=30,
+    )
     if not proc.get("ok"):
         return err(f"ffprobe failed: {proc.get('stderr', '')[:200]}")
 
     try:
         raw = proc.get("stdout", "")
         json_start = raw.find("{")
-        if json_start >= 0:
-            data = json.loads(raw[json_start:])
-        else:
-            data = {}
+        data = json.loads(raw[json_start:]) if json_start >= 0 else {}
         vstream = next(
             (s for s in data.get("streams", []) if s.get("codec_type") == "video"),
             {},
@@ -52,7 +68,7 @@ def video_probe(video_path: str) -> dict:
             "nb_frames": vstream.get("nb_frames"),
         }
         return ok(
-            f"📹 {p.name}: {summary['width']}×{summary['height']} @ "
+            f"\U0001F4F9 {p.name}: {summary['width']}x{summary['height']} @ "
             f"{summary['fps']}fps, {summary['duration']:.1f}s, {summary['codec']}",
             data={"summary": summary},
         )
@@ -68,36 +84,62 @@ def video_extract_frames(
     max_frames: int = 0,
     return_first: bool = True,
 ) -> dict:
-    """Extract frames from video via `just video-frames`.
+    """Extract frames from a video via ffmpeg.
 
     Args:
-        video_path: Path to input video.
-        output_dir: Output dir (default: temp).
+        video_path: Path to input video (inside the workspace).
+        output_dir: Output dir inside the workspace (default: temp).
         fps: Frames/sec to extract (1.0 = every second).
         max_frames: Stop after N frames (0 = unlimited).
         return_first: Embed the first frame in the response.
     """
-    p = Path(video_path).expanduser()
-    if not p.exists():
-        return err(f"video not found: {p}")
+    try:
+        p = resolve_in_workspace(video_path, must_exist=True)
+    except SecurityError as e:
+        return err(str(e))
+
+    # Validate numeric args (defense in depth -- they go into argv, not a shell).
+    try:
+        fps_val = float(fps)
+        if fps_val <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return err("fps must be a positive number")
+    try:
+        max_frames_val = int(max_frames)
+        if max_frames_val < 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return err("max_frames must be a non-negative integer")
 
     if not output_dir:
         output_dir = tempfile.mkdtemp(prefix="cosmos_frames_")
-    outp = Path(output_dir)
+    try:
+        outp = resolve_output_path(output_dir)
+    except SecurityError as e:
+        return err(str(e))
     outp.mkdir(parents=True, exist_ok=True)
 
-    proc = just_run("video-frames", str(p), str(outp), str(fps), str(max_frames),
-                    timeout_s=60 * 30)
-    if not proc.get("ok"):
-        return err(f"frame extraction failed: {proc.get('stderr', '')[:200]}")
+    argv = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "warning",
+        "-i", str(p), "-vf", f"fps={fps_val}",
+    ]
+    if max_frames_val != 0:
+        argv += ["-frames:v", str(max_frames_val)]
+    argv.append(str(outp / "frame_%06d.jpg"))
 
+    proc = safe_run(argv, timeout_s=60 * 30)
+    # ffmpeg may exit non-zero on partial input; check for produced frames.
     frames = sorted(outp.glob("frame_*.jpg"))
     if not frames:
-        return err("no frames extracted", data={"output_dir": str(outp)})
+        return err(
+            f"no frames extracted: {proc.get('stderr', '')[:200]}",
+            data={"output_dir": str(outp)},
+        )
 
     first_bytes = frames[0].read_bytes() if return_first else None
     return ok(
-        text=f"📼 extracted {len(frames)} frame(s) → {outp}",
+        text=f"\U0001F4FC extracted {len(frames)} frame(s) -> {outp}",
         data={
             "output_dir": str(outp),
             "frame_count": len(frames),

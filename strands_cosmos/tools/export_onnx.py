@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result, err
+from ._security import SecurityError, validate_identifier
 
 
 @tool
@@ -22,6 +23,13 @@ def cosmos_export_onnx(
         dtype: Base dtype (visual only).
         quantization: e.g. "fp8" (visual only).
     """
+    try:
+        model_dir = validate_identifier(model_dir, what="model_dir")
+        output_dir = validate_identifier(output_dir, what="output_dir")
+        dtype = validate_identifier(dtype, what="dtype", allow_empty=True)
+        quantization = validate_identifier(quantization, what="quantization", allow_empty=True)
+    except SecurityError as e:
+        return err(str(e))
     if which_part == "llm":
         proc = just_run("export-llm", model_dir, output_dir, timeout_s=60 * 60 * 2)
     elif which_part == "visual":

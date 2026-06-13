@@ -5,42 +5,36 @@ on:
     tags:
       - 'v*.*.*'
 
+# Least-privilege at the workflow level; jobs widen only what they need.
 permissions:
-  contents: write
-  packages: write
-  id-token: write
+  contents: read
 
 jobs:
-  auto-release:
+  build:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      # Pinned to a full commit SHA (v4.2.2) to prevent CI supply-chain attacks
+      # via mutable-tag repointing (CWE-829).
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       with:
         fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      # Pinned to a full commit SHA (v5).
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
       with:
         python-version: "3.11"
 
-    - name: Install dependencies
+    - name: Install build tooling
       run: |
         python -m pip install --upgrade pip
-        pip install build twine
-
-    - name: Extract version from tag
-      id: get_version
-      run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "Version: $VERSION"
+        pip install build
 
     - name: Build package
-      run: |
-        python -m build
+      run: python -m build
 
     - name: Guard against PyPI-forbidden direct-URL dependencies
       run: |
@@ -56,17 +50,50 @@ jobs:
         print('OK: no direct-URL dependencies in built metadata')
         "
 
-    - name: Publish to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: dist
+        path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # PyPI Trusted Publishing (OIDC): no long-lived PYPI_API_TOKEN to steal.
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/project/strands-cosmos/
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      with:
+        name: dist
+        path: dist/
+
+    - name: Publish to PyPI (Trusted Publishing / OIDC)
+      # Official PyPA publisher; uses OIDC, no static token.
+      uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+      with:
+        packages-dir: dist/
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Extract version from tag
+      id: get_version
       run: |
-        twine upload dist/*
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Pinned to a full commit SHA (v2.0.8).
+      uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
       with:
         tag_name: ${{ github.ref_name }}
         name: strands-cosmos v${{ steps.get_version.outputs.version }}
@@ -90,11 +117,3 @@ jobs:
           See [CHANGELOG.md](https://github.com/cagataycali/strands-cosmos/blob/main/CHANGELOG.md) for details.
         draft: false
         prerelease: false
-
-    - name: Summary
-      run: |
-        echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Version:** v${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **PyPI:** https://pypi.org/project/strands-cosmos/${{ steps.get_version.outputs.version }}/" >> $GITHUB_STEP_SUMMARY
-        echo "- **GitHub Release:** https://github.com/cagataycali/strands-cosmos/releases/tag/v${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result, err
+from ._security import SecurityError, validate_identifier
 
 
 @tool
@@ -22,6 +23,11 @@ def cosmos_build_engine(
         which_part: "llm" | "visual".
         min_image_tokens / max_image_tokens / max_input_len: LLM engine hyper-params.
     """
+    try:
+        onnx_dir = validate_identifier(onnx_dir, what="onnx_dir")
+        engine_dir = validate_identifier(engine_dir, what="engine_dir")
+    except SecurityError as e:
+        return err(str(e))
     if which_part == "llm":
         proc = just_run(
             "build-llm-engine", onnx_dir, engine_dir,

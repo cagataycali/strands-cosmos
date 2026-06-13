@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from strands import tool
 from ._common import just_run, proc_result
+from ._security import SecurityError, validate_identifier
 
 
 @tool
@@ -25,6 +26,13 @@ def cosmos_curate(
         num_workers: Ray workers.
         repo_dir: Override COSMOS_XENNA_REPO.
     """
+    try:
+        input_dir = validate_identifier(input_dir, what="input_dir")
+        output_dir = validate_identifier(output_dir, what="output_dir")
+        stages = validate_identifier(stages, what="stages")
+    except SecurityError as e:
+        from ._common import err
+        return err(str(e))
     extra_env = {"COSMOS_XENNA_REPO": repo_dir} if repo_dir else None
     proc = just_run(
         "curate", input_dir, output_dir, stages, str(num_workers),

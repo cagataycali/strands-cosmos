@@ -543,21 +543,26 @@ infer image prompt="describe the scene" max_tokens="256" temperature="0.2" url=V
 
 
 # ── RTP capture (GStreamer) ───────────────────────────────────────────────
-rtp-capture port=RTP_PORT output="/tmp/cosmos_frame.jpg" width="800" height="600" timeout_s="5":
+rtp-capture port=RTP_PORT width="800" height="600" timeout_s="5":
     #!/usr/bin/env bash
+    # SECURITY: the output path is LLM-controlled -> read from $RTP_OUTPUT env
+    # (no {param} interpolation -> no recipe breakout, CWE-78). Numerics stay
+    # positional and are validated as ints by the calling tool.
+    set -euo pipefail
+    OUT="${RTP_OUTPUT:-/tmp/cosmos_frame.jpg}"
     timeout {{timeout_s}} gst-launch-1.0 -e \
-      udpsrc address={{RTP_BIND}} port={{port}} \
+      udpsrc address="${RTP_BIND:-0.0.0.0}" port={{port}} \
         caps='application/x-rtp,media=video,encoding-name=H264,payload=96' ! \
       rtph264depay ! h264parse ! nvv4l2decoder ! nvvidconv ! \
       video/x-raw,width={{width}},height={{height}},format=I420 ! \
-      nvjpegenc ! filesink location="{{output}}" || \
+      nvjpegenc ! filesink location="$OUT" || \
     timeout {{timeout_s}} gst-launch-1.0 -e \
-      udpsrc address={{RTP_BIND}} port={{port}} \
+      udpsrc address="${RTP_BIND:-0.0.0.0}" port={{port}} \
         caps='application/x-rtp,media=video,encoding-name=H264,payload=96' ! \
       rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! videoscale ! \
       video/x-raw,width={{width}},height={{height}} ! jpegenc ! \
-      filesink location="{{output}}"
-    @ls -la "{{output}}"
+      filesink location="$OUT"
+    ls -la "$OUT"
 
 
 # ── NATS publish ──────────────────────────────────────────────────────────
@@ -761,6 +766,40 @@ c3-doctor:
     df -h . | tail -1
     echo "=== done ==="
 
+# ── Thor/Blackwell ptxas fix (idempotent) ──────────────────────────────────
+# Triton ships its own `ptxas-blackwell` which on Jetson Thor (compute cap 11.0,
+# arch sm_110a) fatals with: "Value 'sm_110a' is not defined for option 'gpu-name'".
+# The system CUDA 13 toolkit ptxas DOES support sm_110a. This recipe backs up the
+# bundled binary once (.orig) and symlinks it to the system ptxas. Safe to re-run.
+c3-fix-ptxas:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    VENV="{{C3_REASON_VENV}}"
+    [ -d "$VENV" ] || { echo "venv $VENV missing — run c3-setup-reason first"; exit 0; }
+    # Locate triton's bundled ptxas-blackwell inside the venv
+    PTXAS="$("$VENV/bin/python" -c "import glob,os;h=glob.glob(os.path.join('$VENV','lib','python*','site-packages','triton','backends','nvidia','bin','ptxas-blackwell'));print(h[0] if h else '')")"
+    if [ -z "$PTXAS" ]; then echo "no triton ptxas-blackwell found (nothing to fix)"; exit 0; fi
+    # Find a system ptxas that supports sm_110a
+    SYS_PTXAS=""
+    for cand in /usr/local/cuda-13/bin/ptxas /usr/local/cuda/bin/ptxas "$(command -v ptxas || true)"; do
+      [ -x "$cand" ] || continue
+      # NOTE: capture to a var (no `grep -q`): grep -q closes the pipe early,
+      # sends SIGPIPE to ptxas, and under `set -o pipefail` the pipeline reports
+      # failure intermittently (race). Capturing avoids the broken pipe entirely.
+      HELP="$("$cand" --help 2>&1 || true)"
+      if printf '%s' "$HELP" | grep -q "sm_110a"; then SYS_PTXAS="$cand"; break; fi
+    done
+    if [ -z "$SYS_PTXAS" ]; then
+      echo "⚠ no system ptxas supporting sm_110a found (install CUDA 13 toolkit). Leaving triton ptxas as-is."
+      exit 0
+    fi
+    if [ -L "$PTXAS" ] && [ "$(readlink -f "$PTXAS")" = "$(readlink -f "$SYS_PTXAS")" ]; then
+      echo "✅ ptxas already symlinked -> $SYS_PTXAS"; exit 0
+    fi
+    [ -e "$PTXAS.orig" ] || cp -a "$PTXAS" "$PTXAS.orig"
+    ln -sf "$SYS_PTXAS" "$PTXAS"
+    echo "✅ patched triton ptxas-blackwell -> $SYS_PTXAS (backup: $PTXAS.orig)"
+
 # ── Setup: Reasoner (vLLM + vllm-cosmos3) ──────────────────────────────────
 c3-setup-reason:
     #!/usr/bin/env bash
@@ -771,6 +810,12 @@ c3-setup-reason:
     uv pip install --torch-backend={{C3_TORCH_BACKEND}} "vllm=={{C3_VLLM_VERSION}}" \
       "vllm-cosmos3 @ git+https://github.com/NVIDIA/cosmos-framework.git#subdirectory=packages/vllm-cosmos3" \
       openai
+    # Thor/Jetson fix: vLLM needs OpenCV to decode video frames server-side
+    # (otherwise multimodal video requests fail with "No module named 'cv2'").
+    uv pip install opencv-python-headless
+    # Thor/Blackwell (sm_110a) fix: Triton's bundled ptxas-blackwell does not
+    # recognize sm_110a and aborts PTX codegen. Point it at the system CUDA ptxas.
+    just C3_REASON_VENV="{{C3_REASON_VENV}}" c3-fix-ptxas || true
     echo "✅ Reasoner env ready: {{C3_REASON_VENV}}"
 
 # ── Setup: Generator (Diffusers in-proc) ───────────────────────────────────
@@ -811,24 +856,41 @@ c3-setup-framework:
     echo "✅ Framework env ready: {{C3_FRAMEWORK_REPO}}/.venv"
 
 # ── Reasoner: serve (Cosmos3-Nano single GPU) ──────────────────────────────
-c3-serve-reason model=C3_MODEL port=C3_REASON_PORT tp="1" max_len="32768":
+c3-serve-reason model=C3_MODEL port=C3_REASON_PORT tp="1" max_len="32768" gpu_mem="0.92" enforce_eager="false" offline="false":
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{C3_REASON_VENV}}/bin/activate"
     export VLLM_USE_DEEP_GEMM=${VLLM_USE_DEEP_GEMM:-0}
+    # Thor/Blackwell guard: ensure triton ptxas supports sm_110a before launch
+    # (no-op on non-Thor; idempotent). Prevents PTXAS "sm_110a not defined" crash.
+    just C3_REASON_VENV="{{C3_REASON_VENV}}" c3-fix-ptxas || true
+    # Offline mode: skip HF network calls when the model is already cached.
+    # Useful on air-gapped/edge boxes (avoids hangs + 401s on gated repos).
+    if [ "{{offline}}" = "true" ]; then
+      export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+      echo "📴 offline mode: HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1"
+    fi
+    # enforce_eager skips torch.compile/CUDA-graph capture. On some Blackwell/Thor
+    # builds the compile path still hits unsupported PTX codegen; eager is a safe
+    # fallback (slightly slower, fully functional).
+    EAGER_FLAG=""
+    [ "{{enforce_eager}}" = "true" ] && EAGER_FLAG="--enforce-eager" && echo "🐢 enforce-eager ON"
     nohup vllm serve "{{model}}" \
       --hf-overrides '{"architectures": ["Cosmos3ReasonerForConditionalGeneration"]}' \
       --tensor-parallel-size {{tp}} \
       --mm-encoder-tp-mode data \
       --async-scheduling \
       --max-model-len {{max_len}} \
-      --gpu-memory-utilization 0.92 \
+      --gpu-memory-utilization {{gpu_mem}} \
+      $EAGER_FLAG \
       --allowed-local-media-path / \
       --media-io-kwargs '{"video": {"num_frames": -1}}' \
       --port {{port}} > "{{C3_REASON_LOG}}" 2>&1 &
     echo $! > "{{C3_REASON_PID}}"
     echo "🚀 Reasoner serving (pid $(cat {{C3_REASON_PID}})) on :{{port}} — log: {{C3_REASON_LOG}}"
+    echo "   model={{model}}  gpu_mem={{gpu_mem}}  eager={{enforce_eager}}  offline={{offline}}"
     echo "   poll: curl -s localhost:{{port}}/health"
+    echo "   Thor tip: if you see PTXAS/sm_110a or OOM, retry with: enforce_eager=true gpu_mem=0.3"
 
 c3-serve-stop-reason:
     #!/usr/bin/env bash
@@ -852,16 +914,25 @@ c3-serve-status:
     check omni   "{{C3_OMNI_PID}}"   "{{C3_OMNI_PORT}}"
 
 # ── Reasoner: one-shot inference via OpenAI client ─────────────────────────
-c3-reason prompt image="" video="" task="" port=C3_REASON_PORT max_tokens="4096" think="false":
+# SECURITY: untrusted free-text/paths (prompt, image, video, task) are passed via
+# environment variables (C3_PROMPT/C3_IMAGE/C3_VIDEO/C3_TASK) and read with
+# os.environ inside Python -- NOT via {{param}} interpolation, which was an
+# arbitrary-Python-execution sink (CWE-78). Only validated numerics/bools remain
+# as positional params.
+c3-reason port=C3_REASON_PORT max_tokens="4096" think="false":
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{C3_REASON_VENV}}/bin/activate" 2>/dev/null || true
-    python3 - "$@" <<'PY'
-    import os, sys
+    C3_THINK="{{think}}" C3_PORT="{{port}}" C3_MAX_TOKENS="{{max_tokens}}" python3 - <<'PY'
+    import os
     from openai import OpenAI
-    prompt, image, video, task = """{{prompt}}""", "{{image}}", "{{video}}", "{{task}}"
-    think = "{{think}}".lower() == "true"
-    port = "{{port}}"
+    prompt = os.environ.get("C3_PROMPT", "")
+    image = os.environ.get("C3_IMAGE", "")
+    video = os.environ.get("C3_VIDEO", "")
+    task = os.environ.get("C3_TASK", "")
+    think = os.environ.get("C3_THINK", "false").lower() == "true"
+    port = os.environ.get("C3_PORT", "8000")
+    max_tokens = int(os.environ.get("C3_MAX_TOKENS", "4096"))
     client = OpenAI(base_url=f"http://localhost:{port}/v1", api_key="EMPTY")
     model = client.models.list().data[0].id
     content = []
@@ -871,27 +942,44 @@ c3-reason prompt image="" video="" task="" port=C3_REASON_PORT max_tokens="4096"
     if think: text += "\n\nAnswer in the format: <think>\nreasoning\n</think>\n\n<answer>\nanswer\n</answer>."
     content.append({"type": "text", "text": text})
     r = client.chat.completions.create(model=model, messages=[{"role":"user","content":content}],
-        max_tokens={{max_tokens}}, temperature=0.6 if think else 0.7, top_p=0.95 if think else 0.8,
+        max_tokens=max_tokens, temperature=0.6 if think else 0.7, top_p=0.95 if think else 0.8,
         presence_penalty=0.0 if think else 1.5, seed=0,
         extra_body={"top_k": 20, "repetition_penalty": 1.0})
     print(r.choices[0].message.content)
     PY
 
 # ── Generator: in-proc Diffusers generation ────────────────────────────────
-c3-gen mode="text2video" prompt="" image="" out="/tmp/c3_out.mp4" frames="189" fps="24" steps="35" guidance="6.0" res="480" sound="false" seed="0":
+# SECURITY: untrusted free-text/paths (prompt, image, out) are passed via
+# environment variables (C3_GEN_PROMPT/C3_GEN_IMAGE/C3_GEN_OUT) and read with
+# os.environ inside Python -- NOT via {{param}} interpolation (CWE-78). mode is
+# constrained to a fixed set; all other params are validated numerics/bools.
+c3-gen mode="text2video" frames="189" fps="24" steps="35" guidance="6.0" res="480" sound="false" seed="0":
     #!/usr/bin/env bash
     set -euo pipefail
     source "{{C3_GEN_VENV}}/bin/activate" 2>/dev/null || true
+    C3_GEN_MODE="{{mode}}" C3_GEN_FRAMES="{{frames}}" C3_GEN_FPS="{{fps}}" \
+    C3_GEN_STEPS="{{steps}}" C3_GEN_GUIDANCE="{{guidance}}" C3_GEN_RES="{{res}}" \
+    C3_GEN_SOUND="{{sound}}" C3_GEN_SEED="{{seed}}" C3_GEN_MODEL="{{C3_MODEL}}" \
     python3 - <<'PY'
-    import sys
+    import os, sys
     sys.path.insert(0, ".")
     from strands_cosmos.cosmos3_generator_model import Cosmos3GeneratorModel
-    m = Cosmos3GeneratorModel(model_id="{{C3_MODEL}}")
-    out = m.generate(mode="{{mode}}", prompt="""{{prompt}}""",
-        out_path="{{out}}", image="{{image}}" or None,
-        num_frames={{frames}}, fps={{fps}}, num_inference_steps={{steps}},
-        guidance_scale={{guidance}}, resolution="{{res}}",
-        enable_sound="{{sound}}".lower()=="true", seed={{seed}})
+    allowed_modes = {"text2image","text2video","image2video","text2video-with-sound","image2video-with-sound"}
+    mode = os.environ.get("C3_GEN_MODE", "text2video")
+    if mode not in allowed_modes:
+        raise SystemExit(f"invalid mode: {mode!r}")
+    prompt = os.environ.get("C3_GEN_PROMPT", "")
+    image = os.environ.get("C3_GEN_IMAGE", "") or None
+    out = os.environ.get("C3_GEN_OUT", "/tmp/c3_out.mp4")
+    m = Cosmos3GeneratorModel(model_id=os.environ.get("C3_GEN_MODEL", "nvidia/Cosmos3-Nano"))
+    out = m.generate(mode=mode, prompt=prompt,
+        out_path=out, image=image,
+        num_frames=int(os.environ["C3_GEN_FRAMES"]), fps=int(os.environ["C3_GEN_FPS"]),
+        num_inference_steps=int(os.environ["C3_GEN_STEPS"]),
+        guidance_scale=float(os.environ["C3_GEN_GUIDANCE"]),
+        resolution=os.environ.get("C3_GEN_RES", "480"),
+        enable_sound=os.environ.get("C3_GEN_SOUND", "false").lower()=="true",
+        seed=int(os.environ["C3_GEN_SEED"]))
     print(out)
     PY
 
@@ -917,19 +1005,26 @@ c3-serve-stop-omni:
 #   action_path (FD/policy), domain_name (av|bridge_orig_lerobot|...),
 #   action_chunk_size, fps, image_size, view_point, prompt, seed.
 # See cosmos cookbooks/cosmos3/generator/action for sample specs & assets.
-c3-action input_jsonl out="/tmp/c3_action" checkpoint="Cosmos3-Nano" seed="0" preset="latency":
+c3-action seed="0" preset="latency":
     #!/usr/bin/env bash
+    # SECURITY: input_jsonl/out/checkpoint are LLM-controlled paths -> read from
+    # env (C3_ACTION_INPUT/OUT/CKPT), never {param}-interpolated (CWE-78).
+    # seed (int) + preset (enum) stay positional; preset is validated below.
     set -euo pipefail
+    case "{{preset}}" in latency|throughput) ;; *) echo "invalid preset" >&2; exit 2;; esac
+    IN="${C3_ACTION_INPUT:?C3_ACTION_INPUT required}"
+    OUT="${C3_ACTION_OUT:-/tmp/c3_action}"
+    CKPT="${C3_ACTION_CKPT:-Cosmos3-Nano}"
     cd "{{C3_FRAMEWORK_REPO}}"
     COSMOS_TRAINING=false CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}" \
     MASTER_ADDR=127.0.0.1 MASTER_PORT=29501 RANK=0 WORLD_SIZE=1 LOCAL_RANK=0 \
     .venv/bin/python -m cosmos_framework.scripts.inference \
       --parallelism-preset={{preset}} \
-      -i "{{input_jsonl}}" \
-      -o "{{out}}" \
-      --checkpoint-path "{{checkpoint}}" \
+      -i "$IN" \
+      -o "$OUT" \
+      --checkpoint-path "$CKPT" \
       --seed={{seed}}
-    echo "action output -> {{out}}  (per-run: <out>/<name>/vision.mp4)"
+    echo "action output -> $OUT  (per-run: <out>/<name>/vision.mp4)"
 
 # ── Release ───────────────────────────────────────────────────────────────
 # Build sdist+wheel locally. CI (.github/workflows/release.yml) publishes to
@@ -1095,19 +1190,27 @@ C3_FW_PY := env_var_or_default("C3_FW_PY", C3_FRAMEWORK_REPO + "/.venv/bin/pytho
 # prompt (Cosmos 3 generator prompt-upsampling). Standalone — builds the
 # canonical v4.2 messages and queries the reasoner server (no full sample files).
 # task: t2v | t2i | i2v . Needs a reasoner server on `port`.
-c3-upsample description task="t2v" port=C3_REASON_PORT aspect="16,9" width="832" height="480" fps="24" duration="8" image="":
+# SECURITY: untrusted free-text/paths (description, image) are passed via env
+# vars (C3_UP_DESC/C3_UP_IMAGE) and read with os.environ -- NOT via {{param}}
+# interpolation into the Python heredoc, which was an arbitrary-Python sink
+# (CWE-78). task is constrained; numerics/aspect are validated by the caller.
+c3-upsample task="t2v" port=C3_REASON_PORT aspect="16,9" width="832" height="480" fps="24" duration="8":
     #!/usr/bin/env bash
     set -euo pipefail
-    "{{C3_FW_PY}}" - "$@" <<'PY'
-    import json, os, sys, base64, mimetypes
+    C3_UP_TASK="{{task}}" C3_UP_PORT="{{port}}" C3_UP_ASPECT="{{aspect}}" \
+    C3_UP_WIDTH="{{width}}" C3_UP_HEIGHT="{{height}}" C3_UP_FPS="{{fps}}" \
+    C3_UP_DURATION="{{duration}}" "{{C3_FW_PY}}" - <<'PY'
+    import os, base64, mimetypes
     from openai import OpenAI
     from cosmos_framework.model.vfm.upsampler.prompts import build_messages, clean_response
-    task, desc = "{{task}}", """{{description}}"""
-    port, image = "{{port}}", "{{image}}"
-    kw = dict(task=task, description=desc, aspect_ratio="{{aspect}}",
-              resolution_w={{width}}, resolution_h={{height}})
+    task = os.environ.get("C3_UP_TASK", "t2v")
+    desc = os.environ.get("C3_UP_DESC", "")
+    port = os.environ.get("C3_UP_PORT", "8000")
+    image = os.environ.get("C3_UP_IMAGE", "")
+    kw = dict(task=task, description=desc, aspect_ratio=os.environ.get("C3_UP_ASPECT", "16,9"),
+              resolution_w=int(os.environ["C3_UP_WIDTH"]), resolution_h=int(os.environ["C3_UP_HEIGHT"]))
     if task in ("t2v", "i2v"):
-        kw.update(fps={{fps}}, duration_secs={{duration}})
+        kw.update(fps=int(os.environ["C3_UP_FPS"]), duration_secs=int(os.environ["C3_UP_DURATION"]))
     messages = build_messages(**kw)
     # i2v: attach the conditioning image to the user message
     if task == "i2v" and image:
@@ -1131,18 +1234,20 @@ c3-upsample description task="t2v" port=C3_REASON_PORT aspect="16,9" width="832"
 
 # Batch video captioning via the framework script (reasoner-backed VLM).
 # video: a single video OR a directory of videos. Needs a reasoner server.
-c3-caption-batch video out="/tmp/c3_captions" port=C3_REASON_PORT workers="16" template="":
+c3-caption-batch port=C3_REASON_PORT workers="16":
     #!/usr/bin/env bash
+    # SECURITY: video/out/template are LLM-controlled paths -> read from env
+    # (C3_CAP_VIDEO/OUT/TEMPLATE), never {param}-interpolated (CWE-78).
     set -euo pipefail
     # Resolve the video to an absolute path BEFORE cd (recipe runs from the
     # framework checkout, so a relative video path would not be found there).
-    vid="{{video}}"; case "$vid" in /*) ;; *) vid="$(cd "$(dirname "$vid")" && pwd)/$(basename "$vid")";; esac
-    out="{{out}}"; case "$out" in /*) ;; *) out="$(pwd)/$out";; esac
+    vid="${C3_CAP_VIDEO:?C3_CAP_VIDEO required}"; case "$vid" in /*) ;; *) vid="$(cd "$(dirname "$vid")" && pwd)/$(basename "$vid")";; esac
+    out="${C3_CAP_OUT:-/tmp/c3_captions}"; case "$out" in /*) ;; *) out="$(pwd)/$out";; esac
     cd "{{C3_FRAMEWORK_REPO}}"
     # Upstream's default lookup (cosmos_framework/defaults/video_captioner.txt) is
     # wrong in this checkout — the template ships under inference/defaults. Auto-fill
     # it so batch captioning works out of the box; honor an explicit override.
-    tmpl="{{template}}"
+    tmpl="${C3_CAP_TEMPLATE:-}"
     if [ -z "$tmpl" ]; then
       for cand in cosmos_framework/inference/defaults/video_captioner.txt \
                   cosmos_framework/defaults/video_captioner.txt; do
@@ -1157,19 +1262,22 @@ c3-caption-batch video out="/tmp/c3_captions" port=C3_REASON_PORT workers="16" t
 # VideoPhy-2 evaluation (Cosmos 3 task-specific eval). Two modes:
 #   run+eval:  pass hf_ckpt + val_root (loads HF export, runs, writes summary.json)
 #   eval-only: pass only results_dir (re-scores an existing results dir)
-c3-eval-videophy2 results_dir hf_ckpt="" val_root="" batch_size="1" max_new_tokens="256" nproc="1":
+c3-eval-videophy2 batch_size="1" max_new_tokens="256" nproc="1":
     #!/usr/bin/env bash
+    # SECURITY: results_dir/hf_ckpt/val_root are LLM-controlled paths -> read from
+    # env (C3_EVAL_RESULTS/HF_CKPT/VAL_ROOT), never {param}-interpolated (CWE-78).
     set -euo pipefail
+    RES="${C3_EVAL_RESULTS:?C3_EVAL_RESULTS required}"
     cd "{{C3_FRAMEWORK_REPO}}"
-    args=(--results_dir "{{results_dir}}" --batch_size {{batch_size}} --max_new_tokens {{max_new_tokens}})
-    [ -n "{{hf_ckpt}}" ]  && args+=(--hf_ckpt "{{hf_ckpt}}")
-    [ -n "{{val_root}}" ] && args+=(--val_root "{{val_root}}")
+    args=(--results_dir "$RES" --batch_size {{batch_size}} --max_new_tokens {{max_new_tokens}})
+    [ -n "${C3_EVAL_HF_CKPT:-}" ]  && args+=(--hf_ckpt "$C3_EVAL_HF_CKPT")
+    [ -n "${C3_EVAL_VAL_ROOT:-}" ] && args+=(--val_root "$C3_EVAL_VAL_ROOT")
     if [ "{{nproc}}" != "1" ]; then
       torchrun --nproc_per_node={{nproc}} -m cosmos_framework.scripts.vlm.eval_videophy2 "${args[@]}"
     else
       .venv/bin/python -m cosmos_framework.scripts.vlm.eval_videophy2 "${args[@]}"
     fi
-    echo "videophy2 eval -> {{results_dir}}/summary.json"
+    echo "videophy2 eval -> $RES/summary.json"
 
 # Generator server (vLLM-Omni) with multi-GPU flags for Cosmos3-Super (64B).
 # tp/cfg/ulysses parallelism + optional layerwise offload. Ensure the host has
