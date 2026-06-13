@@ -235,6 +235,48 @@ When multiple agents work on this repo concurrently:
 
 > New entries go AT THE TOP.
 
+### 2026-06-13 — v0.7.0 security release (20→2 Dependabot alerts)
+
+Bumped the dependency stack to clear 18 of 20 open Dependabot alerts on
+strands-labs/strands-for-cosmos, then released v0.7.0 to both PyPI names.
+
+**Bumps (uv.lock):** vllm 0.11.0→0.22.1, torch 2.8.0→2.11.0,
+xgrammar 0.1.25→0.2.2, transformers 5.2.0→5.12.0.
+
+**The non-obvious blocker:** `uv lock --upgrade-package vllm` did NOTHING —
+vllm was frozen at 0.11.0 by a transitive knot:
+  - vllm 0.11.0 HARD-PINS `torch==2.8.0` + xgrammar (so torch/xgrammar can't
+    move until vllm does)
+  - vllm >=0.19.1 requires `transformers>5.5.0`; vllm <0.19.1 requires
+    `transformers<5`; cosmos-guardrail >=0.3 requires `transformers>=5.0`
+  - our base pin was `transformers<5.3.0` → squeezed into an empty set.
+**Fix:** relax the transformers cap to exclude only the band vllm forbids:
+  `transformers>=4.57.0,!=5.0.*,!=5.1.*,!=5.2.*,!=5.3.*,!=5.4.*,!=5.5.0,<6.0.0`
+  (matches vllm 0.22's own marker). Then bump vllm floor to 0.22.0 in the
+  `vllm` and `all` extras. Clean resolve at transformers 5.12.0. Import tests 4/4.
+
+**Cleared:** CRITICAL vllm video-RCE (#9), all 8 vllm highs (SSRF, auto_map RCE,
+trust-override RCE, deserialization, shape DoS, CVE-2025-62164), all vllm
+mediums, xgrammar DoS high (#11), torch memory-corruption (#18, #20).
+
+**Remaining 2 (NO upstream patch exists — confirmed latest on PyPI):**
+  - diskcache #10 (5.6.3 is latest; unsafe pickle; transitive via vllm)
+  - torch #19 (jit.script; all <=2.12.0 affected; no fix released)
+Both low/medium. Accept-risk until upstream ships.
+
+**Release mechanics (dual-package, both from the for-cosmos tagged tree):**
+  - module stays `strands_cosmos` for BOTH dist names (matches 0.6.0 layout)
+  - build for-cosmos by `sed name = "strands-cosmos" -> "strands-for-cosmos"`
+    on a clean copy + `SETUPTOOLS_SCM_PRETEND_VERSION=0.7.0` (dirty tree makes
+    setuptools-scm emit 0.7.1.dev0 — always build from a clean/.git-less copy)
+  - force-push to strands-labs/strands-for-cosmos via `--force-with-lease`,
+    `git commit --amend` preserving the poetic HEAD message verbatim
+    ("Strands for Cosmos — a verse for the machine that dreams in motion").
+    NOTE: for-cosmos has CONTRIBUTING.md + CODE_OF_CONDUCT.md NOT in the
+    cagataycali repo — rsync --delete will drop them; preserve explicitly.
+  - twine upload both → pypi.org/project/strands-cosmos/0.7.0 + strands-for-cosmos/0.7.0
+  - ~/.pypirc holds the token. Dependabot re-scanned within seconds → 20→2.
+
 ### 2026-06-04 — Cosmos 3 Phase 4 DONE (Action world-model via Cosmos Framework)
 
 **Phase 4 GATE PASSED.** Forward dynamics verified end-to-end.
