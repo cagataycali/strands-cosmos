@@ -46,7 +46,7 @@ dependencies = [
     # `pip install strands-cosmos` puts `just` on PATH with no system install.
     # All pipelines flow through the justfile; this guarantees it Just Works.
     "rust-just>=1.40",
-    "transformers>=4.57.0,<5.3.0",
+    "transformers>=4.57.0,!=5.0.*,!=5.1.*,!=5.2.*,!=5.3.*,!=5.4.*,!=5.5.0,<6.0.0",
     "accelerate>=1.12.0,<2.0.0",
     "torch>=2.0.0,<3.0.0",
     "torchvision>=0.15.0,<1.0.0",
@@ -61,7 +61,7 @@ dependencies = [
 
 [project.optional-dependencies]
 vllm = [
-    "vllm>=0.11.0,<1.0.0",
+    "vllm>=0.22.0,<1.0.0",
     "strands-agents[openai]",
 ]
 # Cosmos 3 reasoner client (talks to a local vLLM server). The heavier
@@ -97,7 +97,7 @@ dev = [
 ]
 all = [
     "strands-agents-tools",
-    "vllm>=0.11.0",
+    "vllm>=0.22.0",
     "strands-agents[openai]",
     "diffusers>=0.36,<1.0",
     "cosmos_guardrail",
